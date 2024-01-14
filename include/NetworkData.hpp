@@ -14,9 +14,9 @@ struct NetworkByteChunk : public iplug::IByteChunk
 public:
 
     template <typename ...Args>
-    NetworkByteChunk(Args&& ...args)
+    NetworkByteChunk(const Args& ...args)
     {
-        Add(std::forward<Args>(args)...);
+        Add(std::forward<const Args>(args)...);
     }
     
     inline void Add(const char* str)

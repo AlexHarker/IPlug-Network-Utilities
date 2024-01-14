@@ -143,7 +143,7 @@ public:
         return mServer ? static_cast<int>(mServer->size()) : 0;
     }
     
-    bool SendDataFromServer(ws_connection_id id, const iplug::IByteChunk& chunk)
+    bool SendDataToClient(ws_connection_id id, const iplug::IByteChunk& chunk)
     {
         SharedLock lock(&mMutex);
         

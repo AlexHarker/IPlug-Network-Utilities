@@ -117,7 +117,7 @@ public:
         if (IsServerConnected())
             return;
             
-        SendFromClient(NetworkByteChunk("Sync", GetTimeStamp()));
+        SendFromClient("Sync", GetTimeStamp());
     }
     
     void Stability()
@@ -162,7 +162,7 @@ private:
             
             //DBGMSG("discrepancy %lf ms\n", (t2.AsDouble() - AsTime().AsDouble()) * 1000.0);
 
-            SendFromServer(id, NetworkByteChunk("Respond", t1, t2));
+            SendToClient(id, "Respond", t1, t2);
         }
     }
     

@@ -142,19 +142,22 @@ public:
         }
     }
     
-    void SendFromServer(ws_connection_id id, const iplug::IByteChunk& chunk)
+    template <class ...Args>
+    void SendToClient(ws_connection_id id, const Args& ...args)
     {
-        SendTaggedFromServer(GetDataTag(), id, chunk);
+        SendTaggedToClient(GetDataTag(), id, std::forward<const Args>(args)...);
     }
     
-    void SendFromServer(const iplug::IByteChunk& chunk)
+    template <class ...Args>
+    void SendFromServer(const Args& ...args)
     {
-        SendTaggedFromServer(GetDataTag(), chunk);
+        SendTaggedFromServer(GetDataTag(), std::forward<const Args>(args)...);
     }
     
-    void SendFromClient(const iplug::IByteChunk& chunk)
+    template <class ...Args>
+    void SendFromClient(const Args& ...args)
     {
-        SendTaggedFromClient(GetDataTag(), chunk);
+        SendTaggedFromClient(GetDataTag(), std::forward<const Args>(args)...);
     }
 
 private:
@@ -175,41 +178,47 @@ private:
         return "-";
     }
     
-    void SendConnectionDataFromServer(ws_connection_id id, const iplug::IByteChunk& chunk)
+    template <class ...Args>
+    void SendConnectionDataFromServer(ws_connection_id id, const Args& ...args)
     {
-        SendTaggedFromServer(GetConnectionTag(), id, chunk);
+        SendTaggedToClient(GetConnectionTag(), id, std::forward<const Args>(args)...);
     }
     
-    void SendConnectionDataFromServer(const iplug::IByteChunk& chunk)
+    template <class ...Args>
+    void SendConnectionDataFromServer(const Args& ...args)
     {
-        SendTaggedFromServer(GetConnectionTag(), chunk);
+        SendTaggedFromServer(GetConnectionTag(), std::forward<const Args>(args)...);
     }
     
-    void SendConnectionDataFromClient(const iplug::IByteChunk& chunk)
+    template <class ...Args>
+    void SendConnectionDataFromClient(const Args& ...args)
     {
-        SendTaggedFromClient(GetConnectionTag(), chunk);
+        SendTaggedFromClient(GetConnectionTag(), std::forward<Args>(args)...);
     }
 
-    void SendTaggedFromServer(const char *tag, ws_connection_id id, const iplug::IByteChunk& chunk)
+    template <class ...Args>
+    void SendTaggedToClient(const char *tag, ws_connection_id id, const Args& ...args)
     {
-        SendDataFromServer(id, NetworkByteChunk(tag, chunk));
+        SendDataToClient(id, NetworkByteChunk(tag, std::forward<const Args>(args)...));
     }
     
-    void SendTaggedFromServer(const char *tag, const iplug::IByteChunk& chunk)
+    template <class ...Args>
+    void SendTaggedFromServer(const char *tag, const Args& ...args)
     {
-        SendDataFromServer(NetworkByteChunk(tag, chunk));
+        SendDataFromServer(NetworkByteChunk(tag, std::forward<const Args>(args)...));
     }
     
-    void SendTaggedFromClient(const char *tag, const iplug::IByteChunk& chunk)
+    template <class ...Args>
+    void SendTaggedFromClient(const char *tag, const Args& ...args)
     {
-        SendDataFromClient(NetworkByteChunk(tag, chunk));
+        SendDataFromClient(NetworkByteChunk(tag, std::forward<const Args>(args)...));
     }
     
     bool TryConnect(const char *host, uint32_t port)
     {
         if (Connect(host, port))
         {
-            SendConnectionDataFromServer(NetworkByteChunk("SwitchServer", host, port));
+            SendConnectionDataFromServer("SwitchServer", host, port);
             
             WaitToStop();
             mDiscoverable.Stop();
