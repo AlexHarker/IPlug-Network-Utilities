@@ -2,8 +2,8 @@
 #ifndef NETWORKUTILITIES_HPP
 #define NETWORKUTILITIES_HPP
 
-#include "dependencies/bonjour-for-cpp/bonjour-for-cpp.hpp"
-#include "dependencies/websocket-tools/websocket-tools.hpp"
+#include "../dependencies/bonjour-for-cpp/bonjour-for-cpp.hpp"
+#include "../dependencies/websocket-tools/websocket-tools.hpp"
 
 #include <shared_mutex>
 #include <type_traits>
