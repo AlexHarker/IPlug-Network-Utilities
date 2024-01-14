@@ -4,6 +4,3 @@
 [submodule "dependencies/bonjour-for-cpp"]
 	path = dependencies/bonjour-for-cpp
 	url = https://github.com/AlexHarker/bonjour-for-cpp
-[submodule "dependencies/civetweb"]
-	path = dependencies/civetweb
-	url = https://github.com/civetweb/civetweb
