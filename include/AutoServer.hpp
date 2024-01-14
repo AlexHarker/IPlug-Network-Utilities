@@ -128,7 +128,7 @@ public:
     }
     
     template <class First, class ...Args>
-    inline int Get(First value, Args& ...args)
+    inline int Get(First& value, Args& ...args)
     {
         mPos = mStream.Get(&value, mPos);
         return Get(args...);
