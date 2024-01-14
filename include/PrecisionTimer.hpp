@@ -5,57 +5,9 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <cmath>
-#include <cstring>
-
-#include <unistd.h>
+#include <numeric>
 
 #include "AutoServer.hpp"
-
-class TimeStamp
-{
-public:
-    
-    TimeStamp() : mTime(0) {}
-    TimeStamp(double time) : mTime(time){}
-    
-    friend TimeStamp operator + (TimeStamp a, TimeStamp b)
-    {
-        return TimeStamp(a.mTime + b.mTime);
-    }
-    
-    friend TimeStamp operator - (TimeStamp a, TimeStamp b)
-    {
-        return TimeStamp(a.mTime - b.mTime);
-    }
-    
-    friend bool operator < (TimeStamp a, TimeStamp b)
-    {
-        return a.mTime < b.mTime;
-    }
-    
-    friend TimeStamp Half(TimeStamp a)
-    {
-        return TimeStamp(a.mTime * 0.5);
-    }
-    
-    static TimeStamp AsTime(uintptr_t count, double sr)
-    {
-        return TimeStamp(count / sr);
-    }
-    
-    intptr_t AsSamples(double sr) const
-    {
-        return std::round(mTime * sr);
-    }
-    
-    double AsDouble() const { return mTime; }
-    
-
-private:
-    
-    double mTime;
-};
 
 class PrecisionTimer : public AutoServer
 {
