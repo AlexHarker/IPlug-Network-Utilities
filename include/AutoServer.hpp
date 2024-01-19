@@ -180,14 +180,14 @@ public:
         
         if (mBonjourRestart.Interval() > 15)
             mDiscoverable.Stop();
-        
-        mPeers.Prune(8000, interval);
-        
+                
         if (IsServerConnected())
         {
-            PingClients();
             SendPeerList();
+            PingClients();
         }
+        
+        mPeers.Prune(8000, interval);
     }
     
     void GetServerName(WDL_String& str)
