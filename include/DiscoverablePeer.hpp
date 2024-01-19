@@ -49,9 +49,6 @@ public:
     {
         DBGMSG("PEER: Started\n");
         
-        WDL_String host;
-        GetHostName(host);
-        
         mActive = true;
         
         // Setup peer discovery
