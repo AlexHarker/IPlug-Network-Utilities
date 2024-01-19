@@ -156,10 +156,15 @@ public:
             return;
         }
         
-        // Try to connect to any available servers in order of preference
+        // Update the list of peers
         
         auto peers = mDiscoverable.FindPeers();
         
+        for (auto it = peers.begin(); it != peers.end(); it++)
+            mPeers.Add({it->host().c_str(), it->port()});
+            
+        // Try to connect to any available servers in order of preference
+
         WDL_String host;
         mDiscoverable.GetHostName(host);
         host.Append(".");
