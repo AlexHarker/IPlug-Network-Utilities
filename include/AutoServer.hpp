@@ -17,6 +17,8 @@ class AutoServer : public NetworkServer, NetworkClient
 {
     class PeerList
     {
+    public:
+
         struct HostLinger
         {
             HostLinger(const char* name, uint32_t time = 0)
@@ -29,12 +31,14 @@ class AutoServer : public NetworkServer, NetworkClient
             , mTime(time)
             {}
             
+            HostLinger()
+            : HostLinger(nullptr)
+            {}
+            
             WDL_String mHost;
             uint32_t mTime;
         };
-        
-    public:
-        
+                
         void Add(const HostLinger& host)
         {
             auto findTest = [&](const HostLinger& a) { return !strcmp(a.mHost.Get(), host.mHost.Get()); };
@@ -64,9 +68,9 @@ class AutoServer : public NetworkServer, NetworkClient
             mPeers.erase(std::remove_if(mPeers.begin(), mPeers.end(), removeTest), mPeers.end());
         }
         
-        const WDL_String& operator [](int N) const
+        const HostLinger& operator [](int N) const
         {
-            return mPeers[N].mHost;
+            return mPeers[N];
         }
         
         int Size() const
@@ -115,8 +119,13 @@ public:
     
     void Discover(uint32_t interval)
     {
+        static constexpr uint32_t maxPeerTime = 8000;
+        
         if (IsClientConnected())
+        {
+            mPeers.Prune(maxPeerTime, interval);
             return;
+        }
         
         // Attempt the named next server is there is one
         
@@ -187,7 +196,7 @@ public:
             PingClients();
         }
         
-        mPeers.Prune(8000, interval);
+        mPeers.Prune(maxPeerTime, interval);
     }
     
     void GetServerName(WDL_String& str)
@@ -346,6 +355,20 @@ private:
             mDiscoverable.GetHostName(host);
             
             SendConnectionDataFromClient("Ping", host);
+        }
+        else if (stream.IsNextTag("Peers"))
+        {
+            int size;
+            
+            stream.Get(size);
+            
+            for (int i = 0; i < size; i++)
+            {
+                PeerList::HostLinger host;
+                
+                stream.Get(host);
+                mPeers.Add(host);
+            }
         }
     }
     
