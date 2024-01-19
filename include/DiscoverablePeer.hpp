@@ -64,6 +64,11 @@ public:
         return mActive;
     }
     
+    uint16_t Port() const
+    {
+        return mThisPeer.port();
+    }
+    
     std::list<bonjour_service>& FindPeers()
     {
         WDL_MutexLock lock(&mMutex);

@@ -21,21 +21,24 @@ class AutoServer : public NetworkServer, NetworkClient
 
         struct HostLinger
         {
-            HostLinger(const char* name, uint32_t time = 0)
+            HostLinger(const char* name, uint16_t port, uint32_t time = 0)
             : mHost(name)
+            , mPort(port)
             , mTime(time)
             {}
             
-            HostLinger(const WDL_String& name, uint32_t time = 0)
+            HostLinger(const WDL_String& name, uint16_t port, uint32_t time = 0)
             : mHost(name)
+            , mPort(port)
             , mTime(time)
             {}
             
             HostLinger()
-            : HostLinger(nullptr)
+            : HostLinger(nullptr, 0)
             {}
             
             WDL_String mHost;
+            uint16_t mPort;
             uint32_t mTime;
         };
                 
@@ -87,14 +90,14 @@ class AutoServer : public NetworkServer, NetworkClient
     {
     public:
         
-        void Set(const char *host, uint32_t port)
+        void Set(const char *host, uint16_t port)
         {
             mHost.Set(host);
             mPort = port;
             mTimeOut.Start();
         }
         
-        std::pair<WDL_String, uint32_t> Get()
+        std::pair<WDL_String, uint16_t> Get()
         {
             if (mTimeOut.Interval() > 4)
                 return { WDL_String(), 0 };
@@ -105,7 +108,7 @@ class AutoServer : public NetworkServer, NetworkClient
     private:
         
         WDL_String mHost;
-        uint32_t mPort;
+        uint16_t mPort;
         CPUTimer mTimeOut;
     };
     
@@ -134,6 +137,7 @@ public:
         if (nextServer.first.GetLength())
         {
             TryConnect(nextServer.first.Get(), nextServer.second);
+            mPeers.Prune(maxPeerTime, interval);
             return;
         }
         
@@ -148,6 +152,7 @@ public:
         {
             mDiscoverable.Start();
             mBonjourRestart.Start();
+            mPeers.Prune(maxPeerTime, interval);
             return;
         }
         
@@ -297,7 +302,7 @@ private:
         SendDataFromClient(NetworkByteChunk(tag, std::forward<const Args>(args)...));
     }
     
-    bool TryConnect(const char *host, uint32_t port)
+    bool TryConnect(const char *host, uint16_t port)
     {
         if (Connect(host, port))
         {
@@ -322,6 +327,7 @@ private:
             for (int i = 0; i < mPeers.Size(); i++)
             {
                 chunk.Add(mPeers[i].mHost);
+                chunk.Add(mPeers[i].mPort);
                 chunk.Add(mPeers[i].mTime);
             }
             
@@ -339,44 +345,41 @@ private:
         if (stream.IsNextTag("Ping"))
         {
             WDL_String host;
-            
-            stream.Get(host);
-            mPeers.Add(host);
+            uint16_t port;
+
+            stream.Get(host, port);
+            mPeers.Add({host, port});
         }
     }
     
     void HandleConnectionDataToClient(NetworkByteStream& stream)
     {
+        WDL_String host;
+        uint16_t port = mDiscoverable.Port();
+        uint32_t time = 0;
+        int size = 0;
+        
         if (stream.IsNextTag("SwitchServer"))
         {
-            WDL_String host;
-            uint32_t port;
-            
             stream.Get(host, port);
             mNextServer.Set(host.Get(), port);
         }
         else if (stream.IsNextTag("Ping"))
         {
-            WDL_String host;
             mDiscoverable.GetHostName(host);
-            
-            SendConnectionDataFromClient("Ping", host);
+            SendConnectionDataFromClient("Ping", host, port);
         }
         else if (stream.IsNextTag("Peers"))
         {
-            int size;
-            
             stream.Get(size);
             
             for (int i = 0; i < size; i++)
             {
-                WDL_String host;
-                uint32_t time;
-                
                 stream.Get(host);
+                stream.Get(port);
                 stream.Get(time);
 
-                mPeers.Add({ host, time });
+                mPeers.Add({ host, port, time });
             }
         }
     }
