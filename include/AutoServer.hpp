@@ -193,7 +193,7 @@ private:
     template <class ...Args>
     void SendConnectionDataFromClient(const Args& ...args)
     {
-        SendTaggedFromClient(GetConnectionTag(), std::forward<Args>(args)...);
+        SendTaggedFromClient(GetConnectionTag(), std::forward<const Args>(args)...);
     }
 
     template <class ...Args>
