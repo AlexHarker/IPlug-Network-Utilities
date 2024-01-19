@@ -34,6 +34,11 @@ public:
         PutChunk(&chunk);
     }
     
+    inline void Add(const NetworkByteChunk& chunk)
+    {
+        PutChunk(&chunk);
+    }
+    
     template <typename T>
     inline void Add(const T& value)
     {
