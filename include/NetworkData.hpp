@@ -81,16 +81,16 @@ public:
         mPos = mStream.Get(&value, mPos);
     }
     
-    template <class First, class ...Args>
-    inline void Get(First& value, Args& ...args)
-    {
-        mPos = mStream.Get(&value, mPos);
-        Get(args...);
-    }
-    
     inline void Get(WDL_String& str)
     {
         mPos = mStream.GetStr(str, mPos);
+    }
+    
+    template <class First, class ...Args>
+    inline void Get(First& value, Args& ...args)
+    {
+        Get(value);
+        Get(args...);
     }
     
     // Look to see if the next item is a tag matching the input
