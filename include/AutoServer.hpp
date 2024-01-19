@@ -2,9 +2,11 @@
 #ifndef AUTOSERVER_HPP
 #define AUTOSERVER_HPP
 
+#include <algorithm>
 #include <chrono>
 #include <cstring>
 #include <utility>
+#include <vector>
 
 #include "DiscoverablePeer.hpp"
 #include "NetworkData.hpp"
@@ -13,6 +15,70 @@
 
 class AutoServer : public NetworkServer, NetworkClient
 {
+    class PeerList
+    {
+        struct HostLinger
+        {
+            HostLinger(const char* name, uint32_t time = 0)
+            : mHost(name)
+            , mTime(time)
+            {}
+            
+            HostLinger(const WDL_String& name, uint32_t time = 0)
+            : mHost(name)
+            , mTime(time)
+            {}
+            
+            WDL_String mHost;
+            uint32_t mTime;
+        };
+        
+    public:
+        
+        void Add(const HostLinger& host)
+        {
+            auto findTest = [&](const HostLinger& a) { return !strcmp(a.mHost.Get(), host.mHost.Get()); };
+            auto it = std::find_if(mPeers.begin(), mPeers.end(), findTest);
+            
+            // Update time or add host
+            
+            if (it != mPeers.end())
+                it->mTime = std::min(it->mTime, host.mTime);
+            else
+                mPeers.push_back(host);
+        }
+        
+        void Prune(uint32_t maxTime, uint32_t addTime = 0)
+        {
+            // Added time to hosts if required
+            
+            if (addTime)
+            {
+                for (auto it = mPeers.begin(); it != mPeers.end(); it++)
+                    it->mTime += addTime;
+            }
+              
+            // Remove if max time is exceeded
+            
+            auto removeTest = [&](const HostLinger& a) { return a.mTime >= maxTime; };
+            mPeers.erase(std::remove_if(mPeers.begin(), mPeers.end(), removeTest), mPeers.end());
+        }
+        
+        const WDL_String& operator [](int N) const
+        {
+            return mPeers[N].mHost;
+        }
+        
+        int Size() const
+        {
+            return static_cast<int>(mPeers.size());
+        }
+        
+    private:
+        
+        std::vector<HostLinger> mPeers;
+    };
+    
     class NextServer
     {
     public:
@@ -47,7 +113,7 @@ public:
         StopServer();
     }
     
-    void Discover()
+    void Discover(uint32_t interval)
     {
         if (IsClientConnected())
             return;
@@ -114,6 +180,14 @@ public:
         
         if (mBonjourRestart.Interval() > 15)
             mDiscoverable.Stop();
+        
+        mPeers.Prune(8000, interval);
+        
+        if (IsServerConnected())
+        {
+            PingClients();
+            SendPeerList();
+        }
     }
     
     void GetServerName(WDL_String& str)
@@ -230,7 +304,31 @@ private:
         return false;
     }
     
-    void HandleConnectionDataToServer(NetworkByteStream& stream) {}
+    void SendPeerList()
+    {
+        NetworkByteChunk chunk(mPeers.Size());
+        
+        for (int i = 0; i < mPeers.Size(); i++)
+            chunk.Add(mPeers[i]);
+        
+        SendConnectionDataFromServer("Peers", chunk);
+    }
+    
+    void PingClients()
+    {
+        SendConnectionDataFromServer("Ping");
+    }
+    
+    void HandleConnectionDataToServer(ConnectionID id, NetworkByteStream& stream)
+    {
+        if (stream.IsNextTag("Ping"))
+        {
+            WDL_String host;
+            
+            stream.Get(host);
+            mPeers.Add(host);
+        }
+    }
     
     void HandleConnectionDataToClient(NetworkByteStream& stream)
     {
@@ -242,6 +340,13 @@ private:
             stream.Get(host, port);
             mNextServer.Set(host.Get(), port);
         }
+        else if (stream.IsNextTag("Ping"))
+        {
+            WDL_String host;
+            mDiscoverable.GetHostName(host);
+            
+            SendConnectionDataFromClient("Ping", host);
+        }
     }
     
     void OnDataToServer(ConnectionID id, const iplug::IByteStream& data) final
@@ -250,7 +355,7 @@ private:
                 
         if (stream.IsNextTag(GetConnectionTag()))
         {
-            HandleConnectionDataToServer(stream);
+            HandleConnectionDataToServer(id, stream);
         }
         else if (stream.IsNextTag(GetDataTag()))
         {
@@ -283,6 +388,7 @@ private:
     virtual void ReceiveAsServer(ConnectionID id, NetworkByteStream& data) {}
     virtual void ReceiveAsClient(NetworkByteStream& data) {}
 
+    PeerList mPeers;
     NextServer mNextServer;
     CPUTimer mBonjourRestart;
     DiscoverablePeer mDiscoverable;
