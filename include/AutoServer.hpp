@@ -315,12 +315,18 @@ private:
     
     void SendPeerList()
     {
-        NetworkByteChunk chunk(mPeers.Size());
-        
-        for (int i = 0; i < mPeers.Size(); i++)
-            chunk.Add(mPeers[i]);
-        
-        SendConnectionDataFromServer("Peers", chunk);
+        if (mPeers.Size())
+        {
+            NetworkByteChunk chunk(mPeers.Size());
+            
+            for (int i = 0; i < mPeers.Size(); i++)
+            {
+                chunk.Add(mPeers[i].mHost);
+                chunk.Add(mPeers[i].mTime);
+            }
+            
+            SendConnectionDataFromServer("Peers", chunk);
+        }
     }
     
     void PingClients()
@@ -364,10 +370,13 @@ private:
             
             for (int i = 0; i < size; i++)
             {
-                PeerList::HostLinger host;
+                WDL_String host;
+                uint32_t time;
                 
                 stream.Get(host);
-                mPeers.Add(host);
+                stream.Get(time);
+
+                mPeers.Add({ host, time });
             }
         }
     }
