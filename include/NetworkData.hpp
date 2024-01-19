@@ -19,6 +19,11 @@ public:
         Add(std::forward<const Args>(args)...);
     }
     
+    inline void Add(const WDL_String& str)
+    {
+        PutStr(str.Get());
+    }
+    
     inline void Add(const char* str)
     {
         PutStr(str);
