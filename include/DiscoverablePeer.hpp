@@ -43,6 +43,7 @@ public:
         
         gethostname(host, maxLength);
         name.Set(host);
+        name.Append(".");
     }
     
     void Start()
