@@ -290,7 +290,7 @@ public:
     
     // Creation and Deletion
     
-    NetworkClientInterface() : mConnection(nullptr) {}
+    NetworkClientInterface() : mConnection(nullptr), mPort(0) {}
     virtual ~NetworkClientInterface() {}
     
     NetworkClientInterface(const NetworkClientInterface&) = delete;
@@ -298,7 +298,7 @@ public:
     
     // Public Methods
     
-    bool Connect(const char* host, int port = 8001)
+    bool Connect(const char* host, uint16_t port = 8001)
     {
         DBGMSG("CLIENT: Connection attempt: %s \n", host);
         
@@ -314,9 +314,14 @@ public:
         {
             DBGMSG("CLIENT: Connection successful\n");
             mServer.Set(host);
+            mPort = port;
         }
         else
+        {
             DBGMSG("CLIENT: Connection error\n");
+            mServer.Set("");
+            mPort = 0;
+        }
         
         lock.Destroy();
         
@@ -349,6 +354,13 @@ public:
         name = mServer;
     }
     
+    uint16_t Port() const
+    {
+        SharedLock lock(&mMutex);
+        
+        return mPort;
+    }
+    
 private:
     
     // Customisable Methods
@@ -375,6 +387,7 @@ private:
             std::unique_ptr<T> release(mConnection);
             mConnection = nullptr;
             mServer.Set("");
+            mPort = 0;
             lock.Demote();
             OnCloseClient();
             DBGMSG("CLIENT: Disconnected\n");
@@ -403,6 +416,7 @@ private:
     }
     
     WDL_String mServer;
+    uint16_t mPort;
     mutable SharedMutex mMutex;
     T *mConnection;
 };
