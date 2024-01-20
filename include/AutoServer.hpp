@@ -239,7 +239,7 @@ public:
         if (IsServerConnected())
         {
             str = GetHostName();
-            str.AppendFormatted(256, " [%d]", NClients());
+            str.AppendFormatted(256, " [%lu][%d]", mConfirmedClients.size(), NClients());
         }
         else if (IsClientConnected())
             NetworkClient::GetServerName(str);
