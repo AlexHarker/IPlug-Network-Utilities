@@ -399,6 +399,16 @@ private:
         SendConnectionDataFromServer("Ping");
     }
     
+    void SetNextServer(const char* server, uint16_t port)
+    {
+        WDL_String hostName = GetHostName();
+
+        // Prevent self connection
+        
+        if (strcmp(hostName.Get(), server))
+            mNextServer.Set(server, port);
+    }
+    
     void HandleConnectionDataToServer(ConnectionID id, NetworkByteStream& stream)
     {
         WDL_String clientName;
@@ -419,7 +429,7 @@ private:
             SendConnectionDataToClient(id, "Confirm", confirm);
             
             if (!confirm)
-                mNextServer.Set(clientName.Get(), port);
+                SetNextServer(clientName.Get(), port);
         }
         else if (stream.IsNextTag("Ping"))
         {
@@ -451,7 +461,7 @@ private:
         else if (stream.IsNextTag("Switch"))
         {
             stream.Get(host, port);
-            mNextServer.Set(host.Get(), port);
+            SetNextServer(host.Get(), port);
         }
         else if (stream.IsNextTag("Ping"))
         {
