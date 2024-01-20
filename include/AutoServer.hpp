@@ -259,7 +259,18 @@ public:
         if (IsServerConnected())
         {
             str = GetHostName();
-            str.AppendFormatted(256, " [%lu][%d]", mConfirmedClients.size(), NClients());
+
+            if (mConfirmedClients.size() != NClients())
+                str.AppendFormatted(256, " [%lu][%d]", mConfirmedClients.size(), NClients());
+            else
+                str.AppendFormatted(256, " [%d]", NClients());
+
+            if (IsClientConnected())
+            {
+                WDL_String server;
+                NetworkClient::GetServerName(server);
+                str.AppendFormatted(256, " [%s]", server.Get());
+            }
         }
         else if (IsClientConnected())
             NetworkClient::GetServerName(str);
