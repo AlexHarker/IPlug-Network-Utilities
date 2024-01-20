@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -15,44 +16,75 @@
 
 class AutoServer : public NetworkServer, NetworkClient
 {
+    enum ClientState { Unconfirmed, Confirmed, Connected };
+    
+    static bool NamePrefer(const char* name1, const char* name2)
+    {
+        return strcmp(name1, name2) < 0;
+    }
+    
+    struct Host
+    {
+        Host(const char* name, uint16_t port)
+        : mName(name)
+        , mPort(port)
+        {}
+        
+        Host(const WDL_String& name, uint16_t port)
+        : mName(name)
+        , mPort(port)
+        {}
+        
+        Host() : Host("", 0)
+        {}
+        
+        bool Empty() const { return !mName.GetLength(); }
+        const char *GetName() const { return mName.Get(); }
+        
+        WDL_String mName;
+        uint16_t mPort;
+    };
+    
     class PeerList
     {
     public:
 
         struct HostLinger
         {
-            HostLinger(const char* name, uint16_t port, uint32_t time = 0)
-            : mHost(name)
-            , mPort(port)
+            HostLinger(const char* name, uint16_t port, bool client, uint32_t time = 0)
+            : mHost { name, port }
+            , mClient(client)
             , mTime(time)
             {}
             
-            HostLinger(const WDL_String& name, uint16_t port, uint32_t time = 0)
-            : mHost(name)
-            , mPort(port)
-            , mTime(time)
+            HostLinger(const WDL_String& name, uint16_t port, bool client, uint32_t time = 0)
+            : HostLinger(name.Get(), port, client, time)
             {}
             
-            HostLinger()
-            : HostLinger(nullptr, 0)
+            HostLinger() : HostLinger(nullptr, 0, true)
             {}
             
-            WDL_String mHost;
-            uint16_t mPort;
+            Host mHost;
+            bool mClient;
             uint32_t mTime;
         };
                 
         void Add(const HostLinger& host)
         {
-            auto findTest = [&](const HostLinger& a) { return !strcmp(a.mHost.Get(), host.mHost.Get()); };
+            auto findTest = [&](const HostLinger& a) { return !strcmp(a.mHost.GetName(), host.mHost.GetName()); };
             auto it = std::find_if(mPeers.begin(), mPeers.end(), findTest);
             
-            // Update time or add host
+            // Add host in order or update time
             
-            if (it != mPeers.end())
-                it->mTime = std::min(it->mTime, host.mTime);
+            if (it == mPeers.end())
+            {
+                auto insertTest = [&](const HostLinger& a) { return NamePrefer(a.mHost.GetName(), host.mHost.GetName()); };
+                auto jt = std::find_if(mPeers.begin(), mPeers.end(), insertTest);
+                
+                mPeers.insert(jt, host);
+            }
             else
-                mPeers.push_back(host);
+                it->mTime = std::min(it->mTime, host.mTime);
         }
         
         void Prune(uint32_t maxTime, uint32_t addTime = 0)
@@ -92,23 +124,21 @@ class AutoServer : public NetworkServer, NetworkClient
         
         void Set(const char *host, uint16_t port)
         {
-            mHost.Set(host);
-            mPort = port;
+            mHost = Host { host, port };
             mTimeOut.Start();
         }
         
-        std::pair<WDL_String, uint16_t> Get()
+        Host Get()
         {
             if (mTimeOut.Interval() > 4)
                 return { WDL_String(), 0 };
             else
-                return { mHost, mPort };
+                return mHost;
         }
         
     private:
         
-        WDL_String mHost;
-        uint16_t mPort;
+        Host mHost;
         CPUTimer mTimeOut;
     };
     
@@ -126,17 +156,20 @@ public:
         
         if (IsClientConnected())
         {
+            if (mClientState == ClientState::Confirmed)
+                ClientConnectionConfirmed();
+
             mPeers.Prune(maxPeerTime, interval);
             return;
         }
         
         // Attempt the named next server is there is one
         
-        auto nextServer = mNextServer.Get();
+        auto nextHost = mNextServer.Get();
         
-        if (nextServer.first.GetLength())
+        if (!nextHost.Empty())
         {
-            TryConnect(nextServer.first.Get(), nextServer.second);
+            TryConnect(nextHost.GetName(), nextHost.mPort);
             mPeers.Prune(maxPeerTime, interval);
             return;
         }
@@ -161,40 +194,32 @@ public:
         auto peers = mDiscoverable.FindPeers();
         
         for (auto it = peers.begin(); it != peers.end(); it++)
-            mPeers.Add({it->host().c_str(), it->port()});
+        {
+            if (!it->host().empty())
+                mPeers.Add({it->host().c_str(), it->port(), false});
+        }
             
         // Try to connect to any available servers in order of preference
 
-        WDL_String host;
-        mDiscoverable.GetHostName(host);
-        host.Append(".");
-        
-        auto raw_cmp = [](const char *a, const char *b)
-        {
-            return strcmp(a, b) < 0;
-        };
-        
-        auto cmp = [&](const bonjour_service& a, const bonjour_service& b)
-        {
-            return raw_cmp(a.host().c_str(), b.host().c_str());
-        };
-        
-        auto rmv = [&](const bonjour_service& a)
-        {
-            return a.host().empty() || raw_cmp(host.Get(), a.host().c_str()) || !strcmp(host.Get(), a.host().c_str());
-        };
-        
-        peers.remove_if(rmv);
-        peers.sort(cmp);
+        WDL_String host = GetHostName();
         
         // Attempt to connect in order
         
-        for (auto it = peers.begin(); it != peers.end(); it++)
+        for (int i = 0; i < mPeers.Size(); i++)
         {
-            if (TryConnect(it->host().c_str(), it->port()))
+            auto& peer = mPeers[i];
+            
+            // Don't self connect
+            
+            if (!strcmp(host.Get(), peer.mHost.GetName()) || peer.mClient)
+                continue;
+            
+                // Connect or resolve
+                
+            if (TryConnect(peer.mHost.GetName(), peer.mHost.mPort))
                 break;
-            else
-                mDiscoverable.Resolve(*it);
+            //else
+            //    mDiscoverable.Resolve(bonjour_named(peer.mHost.Get(), peer.mPort));
         }
         
         if (mBonjourRestart.Interval() > 15)
@@ -280,7 +305,7 @@ private:
     }
     
     template <class ...Args>
-    void SendConnectionDataFromServer(ws_connection_id id, const Args& ...args)
+    void SendConnectionDataToClient(ws_connection_id id, const Args& ...args)
     {
         SendTaggedToClient(GetConnectionTag(), id, std::forward<const Args>(args)...);
     }
@@ -315,15 +340,36 @@ private:
         SendDataFromClient(NetworkByteChunk(tag, std::forward<const Args>(args)...));
     }
     
+    void OnServerDisconnect(ConnectionID id) override
+    {
+        mConfirmedClients.erase(id);
+    }
+    
+    void ClientConnectionConfirmed()
+    {
+        WDL_String hostName;
+        NetworkClient::GetServerName(hostName);
+        
+        SendConnectionDataFromClient("Confirm");
+        SendConnectionDataFromServer("Switch", hostName, Port());
+        
+        mClientState = ClientState::Connected;
+
+        WaitToStop();
+        mDiscoverable.Stop();
+        StopServer();
+        mConfirmedClients.clear();
+    }
+    
     bool TryConnect(const char *host, uint16_t port)
     {
         if (Connect(host, port))
         {
-            SendConnectionDataFromServer("SwitchServer", host, port);
+            mClientState = ClientState::Unconfirmed;
+            WDL_String host = GetHostName();
+            uint16_t port = Port();
             
-            WaitToStop();
-            mDiscoverable.Stop();
-            StopServer();
+            SendConnectionDataFromClient("Negotiate", host, port, mConfirmedClients.size());
             
             return true;
         }
@@ -339,8 +385,8 @@ private:
             
             for (int i = 0; i < mPeers.Size(); i++)
             {
-                chunk.Add(mPeers[i].mHost);
-                chunk.Add(mPeers[i].mPort);
+                chunk.Add(mPeers[i].mHost.GetName());
+                chunk.Add(mPeers[i].mHost.mPort);
                 chunk.Add(mPeers[i].mTime);
             }
             
@@ -355,13 +401,34 @@ private:
     
     void HandleConnectionDataToServer(ConnectionID id, NetworkByteStream& stream)
     {
-        if (stream.IsNextTag("Ping"))
+        WDL_String clientName;
+        uint16_t port = 0;
+        
+        if (stream.IsNextTag("Negotiate"))
         {
-            WDL_String host;
-            uint16_t port;
+            WDL_String hostName = GetHostName();
+            int numClients = 0;
+            
+            stream.Get(clientName);
+            stream.Get(port);
+            stream.Get(numClients);
 
-            stream.Get(host, port);
-            mPeers.Add({host, port});
+            bool lessClients = numClients < mConfirmedClients.size();
+            bool prefer = numClients == mConfirmedClients.size() && NamePrefer(hostName.Get(), clientName.Get());
+            int confirm = lessClients || prefer;
+            SendConnectionDataToClient(id, "Confirm", confirm);
+            
+            if (!confirm)
+                mNextServer.Set(clientName.Get(), port);
+        }
+        else if (stream.IsNextTag("Ping"))
+        {
+            stream.Get(clientName, port);
+            mPeers.Add({clientName, port, true});
+        }
+        else if (stream.IsNextTag("Confirm"))
+        {
+            mConfirmedClients.insert(id);
         }
     }
     
@@ -372,7 +439,16 @@ private:
         uint32_t time = 0;
         int size = 0;
         
-        if (stream.IsNextTag("SwitchServer"))
+        if (stream.IsNextTag("Confirm"))
+        {
+            int confirm = 0;
+            
+            stream.Get(confirm);
+            
+            if (confirm)
+                mClientState = ClientState::Confirmed;
+        }
+        else if (stream.IsNextTag("Switch"))
         {
             stream.Get(host, port);
             mNextServer.Set(host.Get(), port);
@@ -392,7 +468,7 @@ private:
                 stream.Get(port);
                 stream.Get(time);
 
-                mPeers.Add({ host, port, time });
+                mPeers.Add({ host, port, false, time });
             }
         }
     }
@@ -436,6 +512,8 @@ private:
     virtual void ReceiveAsServer(ConnectionID id, NetworkByteStream& data) {}
     virtual void ReceiveAsClient(NetworkByteStream& data) {}
 
+    ClientState mClientState;
+    std::unordered_set<ConnectionID> mConfirmedClients;
     PeerList mPeers;
     NextServer mNextServer;
     CPUTimer mBonjourRestart;
