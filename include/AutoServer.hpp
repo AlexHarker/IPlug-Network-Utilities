@@ -23,8 +23,10 @@ class AutoServer : public NetworkServer, NetworkClient
         return strcmp(name1, name2) < 0;
     }
     
-    struct Host
+    class Host
     {
+    public:
+        
         Host(const char* name, uint16_t port)
         : mName(name)
         , mPort(port)
@@ -39,7 +41,10 @@ class AutoServer : public NetworkServer, NetworkClient
         {}
         
         bool Empty() const { return !mName.GetLength(); }
-        const char *GetName() const { return mName.Get(); }
+        const char *Name() const { return mName.Get(); }
+        uint16_t Port() const { return mPort; }
+        
+    private:
         
         WDL_String mName;
         uint16_t mPort;
@@ -49,42 +54,61 @@ class AutoServer : public NetworkServer, NetworkClient
     {
     public:
 
-        struct HostLinger
+        class Peer
         {
-            HostLinger(const char* name, uint16_t port, bool client, uint32_t time = 0)
+        public:
+            
+            Peer(const char* name, uint16_t port, bool client, uint32_t time = 0)
             : mHost { name, port }
             , mClient(client)
             , mTime(time)
             {}
             
-            HostLinger(const WDL_String& name, uint16_t port, bool client, uint32_t time = 0)
-            : HostLinger(name.Get(), port, client, time)
+            Peer(const WDL_String& name, uint16_t port, bool client, uint32_t time = 0)
+            : Peer(name.Get(), port, client, time)
             {}
             
-            HostLinger() : HostLinger(nullptr, 0, true)
+            Peer() : Peer(nullptr, 0, true)
             {}
+            
+            void UpdateTime(uint32_t time)
+            {
+                mTime = std::min(mTime, time);
+            }
+            
+            void AddTime(uint32_t add)
+            {
+                mTime += mTime;
+            }
+            
+            const char *Name() const { return mHost.Name(); }
+            uint16_t Port() const { return mHost.Port(); }
+            bool IsClient() const { return mClient; }
+            uint32_t Time() const { return mTime; }
+            
+        private:
             
             Host mHost;
             bool mClient;
             uint32_t mTime;
         };
                 
-        void Add(const HostLinger& host)
+        void Add(const Peer& peer)
         {
-            auto findTest = [&](const HostLinger& a) { return !strcmp(a.mHost.GetName(), host.mHost.GetName()); };
+            auto findTest = [&](const Peer& a) { return !strcmp(a.Name(), peer.Name()); };
             auto it = std::find_if(mPeers.begin(), mPeers.end(), findTest);
             
             // Add host in order or update time
             
             if (it == mPeers.end())
             {
-                auto insertTest = [&](const HostLinger& a) { return NamePrefer(a.mHost.GetName(), host.mHost.GetName()); };
+                auto insertTest = [&](const Peer& a) { return NamePrefer(a.Name(), peer.Name()); };
                 auto jt = std::find_if(mPeers.begin(), mPeers.end(), insertTest);
                 
-                mPeers.insert(jt, host);
+                mPeers.insert(jt, peer);
             }
             else
-                it->mTime = std::min(it->mTime, host.mTime);
+                it->UpdateTime(peer.Time());
         }
         
         void Prune(uint32_t maxTime, uint32_t addTime = 0)
@@ -94,16 +118,16 @@ class AutoServer : public NetworkServer, NetworkClient
             if (addTime)
             {
                 for (auto it = mPeers.begin(); it != mPeers.end(); it++)
-                    it->mTime += addTime;
+                    it->AddTime(addTime);
             }
               
             // Remove if max time is exceeded
             
-            auto removeTest = [&](const HostLinger& a) { return a.mTime >= maxTime; };
+            auto removeTest = [&](const Peer& a) { return a.Time() >= maxTime; };
             mPeers.erase(std::remove_if(mPeers.begin(), mPeers.end(), removeTest), mPeers.end());
         }
         
-        const HostLinger& operator [](int N) const
+        const Peer& operator [](int N) const
         {
             return mPeers[N];
         }
@@ -115,7 +139,7 @@ class AutoServer : public NetworkServer, NetworkClient
         
     private:
         
-        std::vector<HostLinger> mPeers;
+        std::vector<Peer> mPeers;
     };
     
     class NextServer
@@ -169,7 +193,7 @@ public:
         
         if (!nextHost.Empty())
         {
-            TryConnect(nextHost.GetName(), nextHost.mPort);
+            TryConnect(nextHost.Name(), nextHost.Port());
             mPeers.Prune(maxPeerTime, interval);
             return;
         }
@@ -202,24 +226,22 @@ public:
         // Try to connect to any available servers in order of preference
 
         WDL_String host = GetHostName();
-        
-        // Attempt to connect in order
-        
+                
         for (int i = 0; i < mPeers.Size(); i++)
         {
             auto& peer = mPeers[i];
             
-            // Don't self connect
+            // Don't attempt to connect to clients or to self connect
             
-            if (!strcmp(host.Get(), peer.mHost.GetName()) || peer.mClient)
+            if (peer.IsClient() || !strcmp(host.Get(), peer.Name()))
                 continue;
             
                 // Connect or resolve
                 
-            if (TryConnect(peer.mHost.GetName(), peer.mHost.mPort))
+            if (TryConnect(peer.Name(), peer.Port()))
                 break;
             //else
-            //    mDiscoverable.Resolve(bonjour_named(peer.mHost.Get(), peer.mPort));
+            //    mDiscoverable.Resolve(bonjour_named(peer.Get(), peer.mPort));
         }
         
         if (mBonjourRestart.Interval() > 15)
@@ -385,9 +407,9 @@ private:
             
             for (int i = 0; i < mPeers.Size(); i++)
             {
-                chunk.Add(mPeers[i].mHost.GetName());
-                chunk.Add(mPeers[i].mHost.mPort);
-                chunk.Add(mPeers[i].mTime);
+                chunk.Add(mPeers[i].Name());
+                chunk.Add(mPeers[i].Port());
+                chunk.Add(mPeers[i].Time());
             }
             
             SendConnectionDataFromServer("Peers", chunk);
