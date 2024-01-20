@@ -188,6 +188,7 @@ private:
     // Customisable Handlers
     
     virtual void OnServerReady(ConnectionID id) {}
+    virtual void OnServerDisconnect(ConnectionID id) {}
     virtual void OnDataToServer(ConnectionID id, const iplug::IByteStream& data) = 0;
     
     // Handlers
@@ -205,7 +206,7 @@ private:
                 
         DBGMSG("SERVER: New connection - num clients %i\n", NClients());
         
-        OnServerReady(NClients() - 1); // should defer to main thread
+        OnServerReady(id);
     }
     
     void HandleSocketData(ConnectionID id, const void *pData, size_t size)
@@ -224,6 +225,8 @@ private:
         SharedLock lock(&mMutex);
                 
         DBGMSG("SERVER: Closed connection - num clients %i\n", NClients());
+        
+        OnServerDisconnect(id);
     }
     
     // Static Handlers
