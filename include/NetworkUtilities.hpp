@@ -347,7 +347,7 @@ public:
         return mConnection;
     }
     
-    void GetServerName(WDL_String& name)
+    void GetServerName(WDL_String& name) const
     {
         SharedLock lock(&mMutex);
         
