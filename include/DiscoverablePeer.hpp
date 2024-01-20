@@ -43,6 +43,10 @@ public:
         
         gethostname(host, maxLength);
         name.Set(host);
+        
+        if (!strstr(name.Get(), ".local"))
+            name.Append(".local");
+        
         name.Append(".");
     }
     
