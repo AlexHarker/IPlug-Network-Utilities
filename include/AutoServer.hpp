@@ -209,17 +209,25 @@ public:
         mPeers.Prune(maxPeerTime, interval);
     }
     
-    void GetServerName(WDL_String& str)
+    void GetServerName(WDL_String& str) const
     {
         if (IsServerConnected())
         {
-            mDiscoverable.GetHostName(str);
+            str = GetHostName();
             str.AppendFormatted(256, " [%d]", NClients());
         }
         else if (IsClientConnected())
             NetworkClient::GetServerName(str);
         else
             str.Set("Disconnected");
+    }
+    
+    WDL_String GetHostName() const
+    {
+        WDL_String str;
+        mDiscoverable.GetHostName(str);
+        
+        return str;
     }
     
     void PeerNames(WDL_String& peersNames)
@@ -371,7 +379,7 @@ private:
         }
         else if (stream.IsNextTag("Ping"))
         {
-            mDiscoverable.GetHostName(host);
+            host = GetHostName();
             SendConnectionDataFromClient("Ping", host, port);
         }
         else if (stream.IsNextTag("Peers"))
