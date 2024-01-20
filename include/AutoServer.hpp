@@ -224,8 +224,6 @@ public:
         }
             
         // Try to connect to any available servers in order of preference
-
-        WDL_String host = GetHostName();
                 
         for (int i = 0; i < mPeers.Size(); i++)
         {
@@ -233,7 +231,7 @@ public:
             
             // Don't attempt to connect to clients or to self connect
             
-            if (peer.IsClient() || !strcmp(host.Get(), peer.Name()))
+            if (peer.IsClient() || IsSelf(peer.Name()))
                 continue;
             
                 // Connect or resolve
@@ -310,6 +308,13 @@ public:
 
 private:
     
+    bool IsSelf(const char* peerName) const
+    {
+        WDL_String host = GetHostName();
+        
+        return !strcmp(host.Get(), peerName);
+    }
+        
     void WaitToStop()
     {
         std::chrono::duration<double, std::milli> ms(500);
@@ -423,11 +428,9 @@ private:
     
     void SetNextServer(const char* server, uint16_t port)
     {
-        WDL_String hostName = GetHostName();
-
         // Prevent self connection
         
-        if (strcmp(hostName.Get(), server))
+        if (!IsSelf(server))
             mNextServer.Set(server, port);
     }
     
