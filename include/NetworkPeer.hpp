@@ -275,13 +275,13 @@ public:
             return;
         }
         
-        // Attempt the named next server is there is one
+        // Attempt the named next server if there is one
         
         auto nextHost = mNextServer.Get();
         
         if (!nextHost.Empty())
         {
-            TryConnect(nextHost.Name(), nextHost.Port());
+            TryConnect(nextHost.Name(), nextHost.Port(), true);
             mPeers.Prune(maxPeerTime, interval);
             return;
         }
@@ -512,15 +512,23 @@ private:
         mConfirmedClients.Clear();
     }
     
-    bool TryConnect(const char *host, uint16_t port)
+    bool TryConnect(const char *host, uint16_t port, bool direct = false)
     {
         if (Connect(host, port))
         {
-            mClientState = ClientState::Unconfirmed;
-            WDL_String host = GetHostName();
-            uint16_t port = Port();
+            if (!direct)
+            {
+                mClientState = ClientState::Unconfirmed;
+                WDL_String host = GetHostName();
+                uint16_t port = Port();
             
-            SendConnectionDataFromClient("Negotiate", host, port, mConfirmedClients.Size());
+                SendConnectionDataFromClient("Negotiate", host, port, mConfirmedClients.Size());
+            }
+            else
+            {
+                mClientState = ClientState::Confirmed;
+                SendConnectionDataFromClient("Confirm");
+            }
             
             return true;
         }
