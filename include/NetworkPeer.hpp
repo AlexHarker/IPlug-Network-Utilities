@@ -25,6 +25,8 @@ class NetworkPeer : public NetworkServer, NetworkClient
         return strcmp(name1, name2) < 0;
     }
     
+    // A host (a hostname and port)
+    
     class Host
     {
     public:
@@ -52,10 +54,14 @@ class NetworkPeer : public NetworkServer, NetworkClient
         uint16_t mPort;
     };
     
+    // A list of peers with timeout information
+    
     class PeerList
     {
     public:
 
+        // An individual peer with associated information
+        
         class Peer
         {
         public:
@@ -152,6 +158,8 @@ class NetworkPeer : public NetworkServer, NetworkClient
         ListType mPeers;
     };
     
+    // A list of fully confirmed clients
+    
     class ClientList : private std::unordered_set<ConnectionID>
     {
     public:
@@ -188,6 +196,8 @@ class NetworkPeer : public NetworkServer, NetworkClient
         
         mutable SharedMutex mMutex;
     };
+    
+    // A class for storing info about the next server a peer should connect to
     
     class NextServer
     {
