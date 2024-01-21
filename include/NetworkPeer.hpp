@@ -66,17 +66,18 @@ class NetworkPeer : public NetworkServer, NetworkClient
         {
         public:
                         
-            Peer(const char* name, uint16_t port, bool client, uint32_t time = 0)
+            Peer(const char* name, uint16_t port, bool client, bool unresolved, uint32_t time = 0)
             : mHost { name, port }
             , mClient(client)
+            , mUnresolved(unresolved)
             , mTime(time)
             {}
             
-            Peer(const WDL_String& name, uint16_t port, bool client, uint32_t time = 0)
-            : Peer(name.Get(), port, client, time)
+            Peer(const WDL_String& name, uint16_t port, bool client, bool unresolved, uint32_t time = 0)
+            : Peer(name.Get(), port, client, time, unresolved)
             {}
             
-            Peer() : Peer(nullptr, 0, true)
+            Peer() : Peer(nullptr, 0, true, true)
             {}
             
             void UpdateTime(uint32_t time)
@@ -89,15 +90,22 @@ class NetworkPeer : public NetworkServer, NetworkClient
                 mTime += mTime;
             }
             
+            void SetUnresolved(bool unresolved)
+            {
+                mUnresolved = unresolved;
+            }
+            
             const char *Name() const { return mHost.Name(); }
             uint16_t Port() const { return mHost.Port(); }
             bool IsClient() const { return mClient; }
+            bool IsUnresolved() const { return mUnresolved; }
             uint32_t Time() const { return mTime; }
             
         private:
             
             Host mHost;
             bool mClient;
+            bool mUnresolved;
             uint32_t mTime;
         };
                 
@@ -110,7 +118,7 @@ class NetworkPeer : public NetworkServer, NetworkClient
             auto findTest = [&](const Peer& a) { return !strcmp(a.Name(), peer.Name()); };
             auto it = std::find_if(mPeers.begin(), mPeers.end(), findTest);
             
-            // Add host in order or update time
+            // Add host in order or update details
             
             if (it == mPeers.end())
             {
@@ -118,7 +126,10 @@ class NetworkPeer : public NetworkServer, NetworkClient
                 mPeers.insert(std::find_if(mPeers.begin(), mPeers.end(), insertTest), peer);
             }
             else
+            {
                 it->UpdateTime(peer.Time());
+                it->SetUnresolved(peer.IsUnresolved());
+            }
         }
         
         void Prune(uint32_t maxTime, uint32_t addTime = 0)
@@ -284,10 +295,7 @@ public:
         auto foundPeers = mDiscoverable.FindPeers();
         
         for (auto it = foundPeers.begin(); it != foundPeers.end(); it++)
-        {
-            if (!it->host().empty())
-                mPeers.Add({it->host().c_str(), it->port(), false});
-        }
+            mPeers.Add({it->name(), it->port(), false, it->host().empty()});
             
         // Try to connect to any available servers in order of preference
                 
@@ -296,9 +304,9 @@ public:
         
         for (auto it = peers.begin(); it != peers.end(); it++)
         {
-            // Don't attempt to connect to clients or to self connect
+            // Don't attempt to connect to clients, unresolved hosts or to self connect
             
-            if (it->IsClient() || IsSelf(it->Name()))
+            if (it->IsClient() || it->IsUnresolved() || IsSelf(it->Name()))
                 continue;
             
                 // Connect or resolve
@@ -356,12 +364,15 @@ public:
     
     void PeerNames(WDL_String& peersNames)
     {
-        auto peers = mDiscoverable.Peers();
+        PeerList::ListType peers;
+        mPeers.Get(peers);
         
         for (auto it = peers.begin(); it != peers.end(); it++)
         {
-            peersNames.Append(it->name());
-            if (it->host().empty())
+            peersNames.Append(it->Name());
+            if (it->IsClient())
+                peersNames.Append(" [Client]");
+            if (it->IsUnresolved())
                 peersNames.Append(" [Unresolved]");
             peersNames.Append("\n");
         }
@@ -488,6 +499,10 @@ private:
         PeerList::ListType peers;
         mPeers.Get(peers);
 
+        // Don't send unresolved peers
+        
+        peers.remove_if([](const PeerList::Peer& a) { return a.IsUnresolved(); });
+        
         if (peers.size())
         {
             NetworkByteChunk chunk(peers.size());
@@ -541,7 +556,7 @@ private:
         else if (stream.IsNextTag("Ping"))
         {
             stream.Get(clientName, port);
-            mPeers.Add({clientName, port, true});
+            mPeers.Add({clientName, port, true, false});
         }
         else if (stream.IsNextTag("Confirm"))
         {
@@ -585,7 +600,7 @@ private:
                 stream.Get(port);
                 stream.Get(time);
 
-                mPeers.Add({ host, port, false, time });
+                mPeers.Add({ host, port, false, false, time });
             }
         }
     }
