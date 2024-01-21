@@ -22,7 +22,7 @@ public:
         mStart = std::chrono::steady_clock::now();
     }
     
-    double Interval()
+    double Interval() const
     {
         return std::chrono::duration<double>(std::chrono::steady_clock::now() - mStart).count();
     }

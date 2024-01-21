@@ -3,6 +3,7 @@
 #define NETWORKPEER_HPP
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cstring>
 #include <list>
@@ -17,7 +18,7 @@
 
 class NetworkPeer : public NetworkServer, NetworkClient
 {
-    enum ClientState { Unconfirmed, Confirmed, Connected };
+    enum class ClientState { Unconfirmed, Confirmed, Connected };
     
     static bool NamePrefer(const char* name1, const char* name2)
     {
@@ -192,27 +193,36 @@ class NetworkPeer : public NetworkServer, NetworkClient
     {
     public:
         
-        void Set(const char *host, uint16_t port)
+        void Set(const Host& host)
         {
-            mHost = Host { host, port };
+            SharedLock lock(&mMutex);
+
+            mHost = host;
             mTimeOut.Start();
         }
         
-        Host Get()
+        Host Get() const
         {
+            SharedLock lock(&mMutex);
+
             if (mTimeOut.Interval() > 4)
-                return { WDL_String(), 0 };
+                return Host();
             else
                 return mHost;
         }
         
     private:
         
+        mutable SharedMutex mMutex;
         Host mHost;
         CPUTimer mTimeOut;
     };
     
 public:
+    
+    NetworkPeer()
+    : mClientState(ClientState::Unconfirmed)
+    {}
     
     ~NetworkPeer()
     {
@@ -493,7 +503,7 @@ private:
         // Prevent self connection
         
         if (!IsSelf(server))
-            mNextServer.Set(server, port);
+            mNextServer.Set(Host(server, port));
     }
     
     void HandleConnectionDataToServer(ConnectionID id, NetworkByteStream& stream)
@@ -609,10 +619,18 @@ private:
     virtual void ReceiveAsServer(ConnectionID id, NetworkByteStream& data) {}
     virtual void ReceiveAsClient(NetworkByteStream& data) {}
 
-    ClientState mClientState;
+    // Tracking the client connection process
+    
+    std::atomic<ClientState> mClientState;
+    
+    // Info about other peers
+    
     ClientList mConfirmedClients;
     PeerList mPeers;
     NextServer mNextServer;
+
+    // Bonjour
+    
     CPUTimer mBonjourRestart;
     DiscoverablePeer mDiscoverable;
 };
