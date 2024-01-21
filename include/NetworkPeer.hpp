@@ -79,7 +79,7 @@ class NetworkPeer : public NetworkServer, NetworkClient
             {}
             
             Peer(const WDL_String& name, uint16_t port, bool client, bool unresolved, uint32_t time = 0)
-            : Peer(name.Get(), port, client, time, unresolved)
+            : Peer(name.Get(), port, client, unresolved, time)
             {}
             
             Peer() : Peer(nullptr, 0, true, true)
@@ -309,7 +309,7 @@ public:
         {
             // Make sure we conform the name correctly if the host is not resolved
             
-            bool unresolved =it-> host().empty();
+            bool unresolved = it->host().empty();
             std::string host = unresolved ? it->name() : it->host();
             
             if (unresolved)
