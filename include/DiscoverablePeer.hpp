@@ -15,7 +15,7 @@ class DiscoverablePeer : private bonjour_peer
 public:
     
     DiscoverablePeer(const char* name, uint16_t port)
-    : bonjour_peer(ConformName(name).c_str(), "_elision._tcp.", "", port, { bonjour_peer_options::modes::both, true } )
+    : bonjour_peer(ConformName(name).c_str(), "_elision._tcp.", "", port)
     {}
     
     static WDL_String GetHostName()

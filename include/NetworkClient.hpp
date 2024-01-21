@@ -75,11 +75,11 @@ public:
         return mConnection;
     }
     
-    void GetServerName(WDL_String& name) const
+    WDL_String GetServerName() const
     {
         SharedLock lock(&mMutex);
-        
-        name = mServer;
+                
+        return mServer;
     }
     
     uint16_t Port() const

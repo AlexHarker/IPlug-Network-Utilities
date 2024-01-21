@@ -19,7 +19,7 @@
 class NetworkPeer : public NetworkServer, NetworkClient
 {
     enum class ClientState { Unconfirmed, Confirmed, Connected };
-    enum class PeerSource { Unresolved, Discovered, Client, Server };
+    enum class PeerSource { Unresolved, Discovered, Client, Server, Remote };
 
     static bool NamePrefer(const char* name1, const char* name2)
     {
@@ -271,6 +271,7 @@ public:
             if (mClientState == ClientState::Confirmed)
                 ClientConnectionConfirmed();
 
+            mPeers.Add({NetworkClient::GetServerName().Get(), Port(), PeerSource::Server});
             mPeers.Prune(maxPeerTime, interval);
             return;
         }
@@ -359,8 +360,10 @@ public:
         mPeers.Prune(maxPeerTime, interval);
     }
     
-    void GetServerName(WDL_String& str) const
+    WDL_String GetServerName() const
     {
+        WDL_String str;
+        
         if (IsServerConnected())
         {
             int NConfirmed = mConfirmedClients.Size();
@@ -372,16 +375,14 @@ public:
                 str.AppendFormatted(256, " [%d]", NClients());
 
             if (IsClientConnected())
-            {
-                WDL_String server;
-                NetworkClient::GetServerName(server);
-                str.AppendFormatted(256, " [%s]", server.Get());
-            }
+                str.AppendFormatted(256, " [%s]", NetworkClient::GetServerName().Get());
         }
         else if (IsClientConnected())
-            NetworkClient::GetServerName(str);
+            str = NetworkClient::GetServerName();
         else
             str.Set("Disconnected");
+        
+        return str;
     }
     
     static WDL_String GetHostName()
@@ -403,7 +404,8 @@ public:
                 case PeerSource::Unresolved:    peersNames.Append(" [Unresolved]");   break;
                 case PeerSource::Discovered:    peersNames.Append(" [Discovered]");   break;
                 case PeerSource::Client:        peersNames.Append(" [Client]");       break;
-                default:                        peersNames.Append(" [Server]");       break;
+                case PeerSource::Server:        peersNames.Append(" [Server]");       break;
+                default:                        peersNames.Append(" [Remote]");       break;
             }
             
             peersNames.AppendFormatted(256, " %u\n", it->Time());
@@ -496,11 +498,10 @@ private:
     
     void ClientConnectionConfirmed()
     {
-        WDL_String hostName;
-        NetworkClient::GetServerName(hostName);
+        WDL_String server = NetworkClient::GetServerName();
         
         SendConnectionDataFromClient("Confirm");
-        SendConnectionDataFromServer("Switch", hostName, Port());
+        SendConnectionDataFromServer("Switch", server, Port());
         
         mClientState = ClientState::Connected;
 
@@ -604,7 +605,7 @@ private:
     void HandleConnectionDataToClient(NetworkByteStream& stream)
     {
         WDL_String host;
-        uint16_t port = mDiscoverable.Port();
+        uint16_t port = Port();
         uint32_t time = 0;
         int size = 0;
         
@@ -637,7 +638,7 @@ private:
                 stream.Get(port);
                 stream.Get(time);
 
-                mPeers.Add({ host, port, PeerSource::Server, time });
+                mPeers.Add({ host, port, PeerSource::Remote, time });
             }
         }
     }
