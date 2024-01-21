@@ -50,7 +50,7 @@ class NetworkPeer : public NetworkServer, NetworkClient
         uint16_t mPort;
     };
     
-    class PeerList : private NetworkTypes
+    class PeerList
     {
     public:
 
