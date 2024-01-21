@@ -150,6 +150,43 @@ class NetworkPeer : public NetworkServer, NetworkClient
         ListType mPeers;
     };
     
+    class ClientList : private std::unordered_set<ConnectionID>
+    {
+    public:
+        
+        void Add(ConnectionID id)
+        {
+            SharedLock lock(&mMutex);
+            
+            insert(id);
+        }
+        
+        void Remove(ConnectionID id)
+        {
+            SharedLock lock(&mMutex);
+            
+            erase(id);
+        }
+        
+        void Clear()
+        {
+            SharedLock lock(&mMutex);
+            
+            clear();
+        }
+        
+        int Size() const
+        {
+            SharedLock lock(&mMutex);
+            
+            return static_cast<int>(size());
+        }
+        
+    private:
+        
+        mutable SharedMutex mMutex;
+    };
+    
     class NextServer
     {
     public:
@@ -267,10 +304,11 @@ public:
     {
         if (IsServerConnected())
         {
+            int NConfirmed = mConfirmedClients.Size();
             str = GetHostName();
-
-            if (mConfirmedClients.size() != NClients())
-                str.AppendFormatted(256, " [%lu][%d]", mConfirmedClients.size(), NClients());
+            
+            if (NConfirmed != NClients())
+                str.AppendFormatted(256, " [%d][%d]", NConfirmed, NClients());
             else
                 str.AppendFormatted(256, " [%d]", NClients());
 
@@ -389,7 +427,7 @@ private:
     
     void OnServerDisconnect(ConnectionID id) override
     {
-        mConfirmedClients.erase(id);
+        mConfirmedClients.Remove(id);
     }
     
     void ClientConnectionConfirmed()
@@ -405,7 +443,7 @@ private:
         WaitToStop();
         mDiscoverable.Stop();
         StopServer();
-        mConfirmedClients.clear();
+        mConfirmedClients.Clear();
     }
     
     bool TryConnect(const char *host, uint16_t port)
@@ -416,7 +454,7 @@ private:
             WDL_String host = GetHostName();
             uint16_t port = Port();
             
-            SendConnectionDataFromClient("Negotiate", host, port, mConfirmedClients.size());
+            SendConnectionDataFromClient("Negotiate", host, port, mConfirmedClients.Size());
             
             return true;
         }
@@ -466,14 +504,14 @@ private:
         {
             WDL_String hostName = GetHostName();
             int numClients = 0;
+            int numClientsLocal = mConfirmedClients.Size();
             
             stream.Get(clientName);
             stream.Get(port);
             stream.Get(numClients);
 
-            bool lessClients = numClients < mConfirmedClients.size();
-            bool prefer = numClients == mConfirmedClients.size() && NamePrefer(hostName.Get(), clientName.Get());
-            int confirm = lessClients || prefer;
+            bool prefer = numClients == numClientsLocal && NamePrefer(hostName.Get(), clientName.Get());
+            int confirm = numClients < numClientsLocal || prefer;
             SendConnectionDataToClient(id, "Confirm", confirm);
             
             if (!confirm)
@@ -486,7 +524,7 @@ private:
         }
         else if (stream.IsNextTag("Confirm"))
         {
-            mConfirmedClients.insert(id);
+            mConfirmedClients.Add(id);
         }
     }
     
@@ -571,7 +609,7 @@ private:
     virtual void ReceiveAsClient(NetworkByteStream& data) {}
 
     ClientState mClientState;
-    std::unordered_set<ConnectionID> mConfirmedClients;
+    ClientList mConfirmedClients;
     PeerList mPeers;
     NextServer mNextServer;
     CPUTimer mBonjourRestart;
