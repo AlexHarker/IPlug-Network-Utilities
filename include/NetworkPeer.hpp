@@ -540,7 +540,7 @@ private:
         
         if (peers.size())
         {
-            NetworkByteChunk chunk(peers.size());
+            NetworkByteChunk chunk(static_cast<int>(peers.size()));
             
             for (auto it = peers.begin(); it != peers.end(); it++)
             {
