@@ -26,12 +26,12 @@ std::string tempName()
     return name;
 }
 
-class DiscoverablePeer
+class DiscoverablePeer : private bonjour_peer
 {
 public:
     
     DiscoverablePeer()
-    : mThisPeer(tempName().c_str(), "_elision._tcp.", "", 8001, { bonjour_peer_options::modes::both, true } )
+    : bonjour_peer(tempName().c_str(), "_elision._tcp.", "", 8001, { bonjour_peer_options::modes::both, true } )
     {}
     
     static void GetHostName(WDL_String& name)
@@ -49,6 +49,21 @@ public:
         name.Append(".");
     }
     
+    const char *RegType() const
+    {
+        return bonjour_peer::regtype();
+    }
+    
+    const char *Domain() const
+    {
+        return bonjour_peer::domain();
+    }
+    
+    uint16_t Port() const
+    {
+        return bonjour_peer::port();
+    }
+    
     void Start()
     {
         DBGMSG("PEER: Started\n");
@@ -57,48 +72,7 @@ public:
         
         // Setup peer discovery
         
-        mThisPeer.start();
-    }
-    
-    bool IsRunning() const
-    {
-        return mActive;
-    }
-    
-    uint16_t Port() const
-    {
-        return mThisPeer.port();
-    }
-    
-    const char *RegType() const
-    {
-        return mThisPeer.regtype();
-    }
-    
-    const char *Domain() const
-    {
-        return mThisPeer.domain();
-    }
-    
-    std::list<bonjour_service>& FindPeers()
-    {
-        WDL_MutexLock lock(&mMutex);
-        
-        mThisPeer.list_peers(mPeers);
-        
-        return mPeers;
-    }
-    
-    std::list<bonjour_service> Peers()
-    {
-        WDL_MutexLock lock(&mMutex);
-        
-        return mPeers;
-    }
-    
-    void Resolve(const char* host)
-    {
-        mThisPeer.resolve(bonjour_named(host, RegType(), Domain()));
+        bonjour_peer::start();
     }
     
     void Stop()
@@ -108,16 +82,41 @@ public:
         DBGMSG("PEER: Stopped\n");
         
         mActive = false;
-        mThisPeer.stop();
+        bonjour_peer::stop();
         mPeers.clear();
+    }
+    
+    bool IsRunning() const
+    {
+        return mActive;
+    }
+    
+    std::list<bonjour_service>& FindPeers()
+    {
+        WDL_MutexLock lock(&mMutex);
+        
+        bonjour_peer::list_peers(mPeers);
+        
+        return mPeers;
+    }
+    
+    std::list<bonjour_service> Peers() const
+    {
+        WDL_MutexLock lock(&mMutex);
+        
+        return mPeers;
+    }
+    
+    void Resolve(const char* host)
+    {
+        bonjour_peer::resolve(bonjour_named(host, RegType(), Domain()));
     }
     
 private:
     
-    std::list<bonjour_service> mPeers;
-    bonjour_peer mThisPeer;
+    mutable WDL_Mutex mMutex;
     bool mActive;
-    WDL_Mutex mMutex;
+    std::list<bonjour_service> mPeers;
 };
 
 #endif /* DISCOVERABLEPEER_HPP */
