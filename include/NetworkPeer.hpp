@@ -403,11 +403,13 @@ public:
             
             switch (it->Source())
             {
-                case PeerSource::Unresolved:    peersNames.Append(" [Unresolved]\n");   break;
-                case PeerSource::Discovered:    peersNames.Append(" [Discovered]\n");   break;
-                case PeerSource::Client:        peersNames.Append(" [Client]\n");       break;
-                default:                        peersNames.Append(" [Server]\n");       break;
+                case PeerSource::Unresolved:    peersNames.Append(" [Unresolved]");   break;
+                case PeerSource::Discovered:    peersNames.Append(" [Discovered]");   break;
+                case PeerSource::Client:        peersNames.Append(" [Client]");       break;
+                default:                        peersNames.Append(" [Server]");       break;
             }
+            
+            peersNames.AppendFormatted(256, " %u\n", it->Time());
         }
     }
     
