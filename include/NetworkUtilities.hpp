@@ -81,6 +81,7 @@ protected:
         void operator = (VariableLock const&& rhs) = delete;
         
     private:
+        
         SharedMutex *mMutex;
         bool mShared;
     };
