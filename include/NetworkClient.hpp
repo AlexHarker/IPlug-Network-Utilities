@@ -56,6 +56,11 @@ public:
         return IsClientConnected();
     }
     
+    void Disconnect()
+    {
+        HandleClose();
+    }
+    
     void SendDataFromClient(const iplug::IByteChunk& chunk)
     {
         SharedLock lock(&mMutex);

@@ -617,6 +617,8 @@ private:
             
             if (confirm)
                 mClientState = ClientState::Confirmed;
+            else
+                Disconnect();
         }
         else if (stream.IsNextTag("Switch"))
         {
