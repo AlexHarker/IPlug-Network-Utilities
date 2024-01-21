@@ -44,6 +44,11 @@ class NetworkPeer : public NetworkServer, NetworkClient
         Host() : Host("", 0)
         {}
         
+        void UpdatePort(uint16_t port)
+        {
+            mPort = port;
+        }
+        
         bool Empty() const { return !mName.GetLength(); }
         const char *Name() const { return mName.Get(); }
         uint16_t Port() const { return mPort; }
@@ -80,6 +85,16 @@ class NetworkPeer : public NetworkServer, NetworkClient
             Peer() : Peer(nullptr, 0, true, true)
             {}
             
+            void UpdatePort(uint16_t port)
+            {
+                mHost.UpdatePort(port);
+            }
+            
+            void UpdateUnresolved(bool unresolved)
+            {
+                mUnresolved = unresolved;
+            }
+            
             void UpdateTime(uint32_t time)
             {
                 mTime = std::min(mTime, time);
@@ -88,11 +103,6 @@ class NetworkPeer : public NetworkServer, NetworkClient
             void AddTime(uint32_t add)
             {
                 mTime += mTime;
-            }
-            
-            void SetUnresolved(bool unresolved)
-            {
-                mUnresolved = unresolved;
             }
             
             const char *Name() const { return mHost.Name(); }
@@ -127,8 +137,9 @@ class NetworkPeer : public NetworkServer, NetworkClient
             }
             else
             {
+                it->UpdatePort(peer.Port());
+                it->UpdateUnresolved(peer.IsUnresolved());
                 it->UpdateTime(peer.Time());
-                it->SetUnresolved(peer.IsUnresolved());
             }
         }
         
