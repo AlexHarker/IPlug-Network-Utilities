@@ -306,7 +306,27 @@ public:
         auto foundPeers = mDiscoverable.FindPeers();
         
         for (auto it = foundPeers.begin(); it != foundPeers.end(); it++)
-            mPeers.Add({it->name(), it->port(), false, it->host().empty()});
+        {
+            // Make sure we conform the name correctly if the host is not resolved
+            
+            bool unresolved =it-> host().empty();
+            std::string host = unresolved ? it->name() : it->host();
+            
+            if (unresolved)
+            {
+                std::string end("-local");
+                
+                auto pos = host.length() - end.length();
+                
+                if (host.find(end, pos) != std::string::npos)
+                {
+                    host.resize(pos);
+                    host.append(".local.");
+                }
+            }
+            
+            mPeers.Add({host.c_str(), it->port(), false, unresolved});
+        }
             
         // Try to connect to any available servers in order of preference
                 
@@ -367,10 +387,7 @@ public:
     
     WDL_String GetHostName() const
     {
-        WDL_String str;
-        mDiscoverable.GetHostName(str);
-        
-        return str;
+        return mDiscoverable.GetHostName();
     }
     
     void PeerNames(WDL_String& peersNames)

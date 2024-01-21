@@ -10,43 +10,30 @@
 
 #include "../dependencies/bonjour-for-cpp/bonjour-for-cpp.hpp"
 
-std::string tempName()
-{
-    constexpr int maxLength = 128;
-    char host[maxLength];
-    
-    gethostname(host, maxLength);
-    
-    std::string name(host);
-    size_t pos = -1;
-    
-    while ((pos = name.find_first_of("._")) != std::string::npos)
-        name[pos]= '-';
-    
-    return name;
-}
-
 class DiscoverablePeer : private bonjour_peer
 {
 public:
     
     DiscoverablePeer()
-    : bonjour_peer(tempName().c_str(), "_elision._tcp.", "", 8001, { bonjour_peer_options::modes::both, true } )
+    : bonjour_peer(ConformName(GetHostName().Get()).c_str(), "_elision._tcp.", "", 8001, { bonjour_peer_options::modes::both, true } )
     {}
     
-    static void GetHostName(WDL_String& name)
+    static WDL_String GetHostName()
     {
         constexpr int maxLength = 128;
         
         char host[maxLength];
         
         gethostname(host, maxLength);
-        name.Set(host);
+        
+        WDL_String name(host);
         
         if (!strstr(name.Get(), ".local"))
             name.Append(".local");
         
         name.Append(".");
+        
+        return name;
     }
     
     const char *RegType() const
@@ -113,6 +100,20 @@ public:
     }
     
 private:
+    
+    static std::string ConformName(const char* name)
+    {
+        std::string conformedName(name);
+        size_t pos = -1;
+        
+        while ((pos = conformedName.find_first_of("._")) != std::string::npos)
+            conformedName[pos] = '-';
+        
+        if (!conformedName.empty() && conformedName.back() == '-')
+            conformedName.resize(conformedName.length() - 1);
+        
+        return conformedName;
+    }
     
     mutable WDL_Mutex mMutex;
     bool mActive;
