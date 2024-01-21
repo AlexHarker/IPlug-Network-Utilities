@@ -10,9 +10,10 @@
 #include <utility>
 
 #include "DiscoverablePeer.hpp"
+#include "NetworkClient.hpp"
 #include "NetworkData.hpp"
+#include "NetworkServer.hpp"
 #include "NetworkTiming.hpp"
-#include "NetworkUtilities.hpp"
 
 class NetworkPeer : public NetworkServer, NetworkClient
 {
