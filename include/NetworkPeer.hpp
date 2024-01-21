@@ -102,7 +102,7 @@ class NetworkPeer : public NetworkServer, NetworkClient
             
             void AddTime(uint32_t add)
             {
-                mTime += mTime;
+                mTime += add;
             }
             
             const char *Name() const { return mHost.Name(); }
