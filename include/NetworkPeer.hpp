@@ -133,7 +133,7 @@ class NetworkPeer : public NetworkServer, NetworkClient
             
             if (it == mPeers.end())
             {
-                auto insertTest = [&](const Peer& a) { return NamePrefer(a.Name(), peer.Name()); };
+                auto insertTest = [&](const Peer& a) { return !NamePrefer(a.Name(), peer.Name()); };
                 mPeers.insert(std::find_if(mPeers.begin(), mPeers.end(), insertTest), peer);
             }
             else
