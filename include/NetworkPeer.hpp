@@ -523,10 +523,7 @@ private:
                 SendConnectionDataFromClient("Negotiate", host, port, mConfirmedClients.Size());
             }
             else
-            {
-                mClientState = ClientState::Confirmed;
-                SendConnectionDataFromClient("Confirm");
-            }
+                ClientConnectionConfirmed();
             
             return true;
         }
