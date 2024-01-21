@@ -124,7 +124,7 @@ class NetworkPeer : public NetworkServer, NetworkClient
 
         void Add(const Peer& peer)
         {
-            SharedLock lock(&mMutex);
+            RecursiveLock lock(&mMutex);
 
             auto findTest = [&](const Peer& a) { return !strcmp(a.Name(), peer.Name()); };
             auto it = std::find_if(mPeers.begin(), mPeers.end(), findTest);
@@ -146,7 +146,7 @@ class NetworkPeer : public NetworkServer, NetworkClient
         
         void Prune(uint32_t maxTime, uint32_t addTime = 0)
         {
-            SharedLock lock(&mMutex);
+            RecursiveLock lock(&mMutex);
 
             // Added time to hosts if required
             
@@ -163,21 +163,21 @@ class NetworkPeer : public NetworkServer, NetworkClient
         
         void Get(ListType& list) const
         {
-            SharedLock lock(&mMutex);
+            RecursiveLock lock(&mMutex);
 
             list = mPeers;
         }
         
         int Size() const
         {
-            SharedLock lock(&mMutex);
+            RecursiveLock lock(&mMutex);
 
             return static_cast<int>(mPeers.size());
         }
         
     private:
         
-        mutable SharedMutex mMutex;
+        mutable RecursiveMutex mMutex;
         ListType mPeers;
     };
     
@@ -189,35 +189,35 @@ class NetworkPeer : public NetworkServer, NetworkClient
         
         void Add(ConnectionID id)
         {
-            SharedLock lock(&mMutex);
+            RecursiveLock lock(&mMutex);
             
             insert(id);
         }
         
         void Remove(ConnectionID id)
         {
-            SharedLock lock(&mMutex);
+            RecursiveLock lock(&mMutex);
             
             erase(id);
         }
         
         void Clear()
         {
-            SharedLock lock(&mMutex);
+            RecursiveLock lock(&mMutex);
             
             clear();
         }
         
         int Size() const
         {
-            SharedLock lock(&mMutex);
+            RecursiveLock lock(&mMutex);
             
             return static_cast<int>(size());
         }
         
     private:
         
-        mutable SharedMutex mMutex;
+        mutable RecursiveMutex mMutex;
     };
     
     // A class for storing info about the next server a peer should connect to
@@ -228,7 +228,7 @@ class NetworkPeer : public NetworkServer, NetworkClient
         
         void Set(const Host& host)
         {
-            SharedLock lock(&mMutex);
+            RecursiveLock lock(&mMutex);
 
             mHost = host;
             mTimeOut.Start();
@@ -236,7 +236,7 @@ class NetworkPeer : public NetworkServer, NetworkClient
         
         Host Get() const
         {
-            SharedLock lock(&mMutex);
+            RecursiveLock lock(&mMutex);
 
             if (mTimeOut.Interval() > 4)
                 return Host();
@@ -246,7 +246,7 @@ class NetworkPeer : public NetworkServer, NetworkClient
         
     private:
         
-        mutable SharedMutex mMutex;
+        mutable RecursiveMutex mMutex;
         Host mHost;
         CPUTimer mTimeOut;
     };

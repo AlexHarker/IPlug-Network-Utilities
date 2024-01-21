@@ -12,6 +12,8 @@ protected:
     
     using ConnectionID = ws_connection_id;
 
+    using RecursiveMutex = WDL_Mutex;
+    using RecursiveLock = WDL_MutexLock;
     using SharedMutex = WDL_SharedMutex;
     using SharedLock = WDL_MutexLockShared;
     using ExclusiveLock = WDL_MutexLockExclusive;
