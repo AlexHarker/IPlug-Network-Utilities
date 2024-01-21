@@ -18,7 +18,7 @@
 
 class NetworkPeer : public NetworkServer, NetworkClient
 {
-    enum class ClientState { Unconfirmed, Confirmed, Connected };
+    enum class ClientState { Unconfirmed, Confirmed, Failed, Connected };
     enum class PeerSource { Unresolved, Discovered, Client, Server, Remote };
 
     static bool NamePrefer(const char* name1, const char* name2)
@@ -268,12 +268,17 @@ public:
     {
         if (IsClientConnected())
         {
-            if (mClientState == ClientState::Confirmed)
-                ClientConnectionConfirmed();
-
-            mPeers.Add({NetworkClient::GetServerName().Get(), Port(), PeerSource::Server});
-            mPeers.Prune(maxPeerTime, interval);
-            return;
+            if (mClientState != ClientState::Failed)
+            {
+                if (mClientState == ClientState::Confirmed)
+                    ClientConnectionConfirmed();
+                
+                mPeers.Add({NetworkClient::GetServerName().Get(), Port(), PeerSource::Server});
+                mPeers.Prune(maxPeerTime, interval);
+                return;
+            }
+            else
+                Disconnect();
         }
         
         // Attempt the named next server if there is one
@@ -615,10 +620,7 @@ private:
             
             stream.Get(confirm);
             
-            if (confirm)
-                mClientState = ClientState::Confirmed;
-            else
-                Disconnect();
+            mClientState = confirm ? ClientState::Confirmed : ClientState::Failed;
         }
         else if (stream.IsNextTag("Switch"))
         {
