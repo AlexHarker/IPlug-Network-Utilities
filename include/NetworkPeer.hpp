@@ -297,8 +297,6 @@ public:
         {
             mDiscoverable.Start();
             mBonjourRestart.Start();
-            mPeers.Prune(maxPeerTime, interval);
-            return;
         }
         
         // Update the list of peers
