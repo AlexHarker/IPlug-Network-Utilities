@@ -1,6 +1,6 @@
 
-#ifndef AUTOSERVER_HPP
-#define AUTOSERVER_HPP
+#ifndef NETWORKPEER_HPP
+#define NETWORKPEER_HPP
 
 #include <algorithm>
 #include <chrono>
@@ -14,7 +14,7 @@
 #include "NetworkTiming.hpp"
 #include "NetworkUtilities.hpp"
 
-class AutoServer : public NetworkServer, NetworkClient
+class NetworkPeer : public NetworkServer, NetworkClient
 {
     enum ClientState { Unconfirmed, Confirmed, Connected };
     
@@ -176,7 +176,7 @@ class AutoServer : public NetworkServer, NetworkClient
     
 public:
     
-    ~AutoServer()
+    ~NetworkPeer()
     {
         mDiscoverable.Stop();
         StopServer();
@@ -578,4 +578,4 @@ private:
     DiscoverablePeer mDiscoverable;
 };
 
-#endif /* AUTOSERVER_HPP */
+#endif /* NETWORKPEER_HPP */

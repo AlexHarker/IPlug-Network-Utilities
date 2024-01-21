@@ -7,9 +7,9 @@
 #include <cstdint>
 #include <numeric>
 
-#include "AutoServer.hpp"
+#include "NetworkPeer.hpp"
 
-class PrecisionTimer : public AutoServer
+class PrecisionTimer : public NetworkPeer
 {
     template <class T, int Size>
     class MedianFilter
