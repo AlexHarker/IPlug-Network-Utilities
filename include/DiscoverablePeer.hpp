@@ -31,8 +31,7 @@ class DiscoverablePeer
 public:
     
     DiscoverablePeer()
-    : mThisPeer(tempName().c_str(), "_elision._tcp.", "", 8001
-                , { bonjour_peer_options::modes::both, true } )
+    : mThisPeer(tempName().c_str(), "_elision._tcp.", "", 8001, { bonjour_peer_options::modes::both, true } )
     {}
     
     static void GetHostName(WDL_String& name)
@@ -71,6 +70,16 @@ public:
         return mThisPeer.port();
     }
     
+    const char *RegType() const
+    {
+        return mThisPeer.regtype();
+    }
+    
+    const char *Domain() const
+    {
+        return mThisPeer.domain();
+    }
+    
     std::list<bonjour_service>& FindPeers()
     {
         WDL_MutexLock lock(&mMutex);
@@ -87,9 +96,9 @@ public:
         return mPeers;
     }
     
-    void Resolve(const bonjour_service& service)
+    void Resolve(const char* host)
     {
-        mThisPeer.resolve(service);
+        mThisPeer.resolve(bonjour_named(host, RegType(), Domain()));
     }
     
     void Stop()

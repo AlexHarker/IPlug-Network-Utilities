@@ -247,8 +247,8 @@ public:
                 
             if (TryConnect(it->Name(), it->Port()))
                 break;
-            //else
-            //    mDiscoverable.Resolve(bonjour_named(peer.Get(), peer.mPort));
+            else
+                mDiscoverable.Resolve(it->Name());
         }
         
         if (mBonjourRestart.Interval() > 15)
