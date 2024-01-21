@@ -26,7 +26,7 @@ public:
     
     // Public Methods
     
-    bool Connect(const char* host, uint16_t port = 8001)
+    bool Connect(const char* host, uint16_t port)
     {
         DBGMSG("CLIENT: Connection attempt: %s \n", host);
         

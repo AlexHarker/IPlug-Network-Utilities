@@ -253,8 +253,9 @@ class NetworkPeer : public NetworkServer, NetworkClient
     
 public:
     
-    NetworkPeer()
+    NetworkPeer(uint16_t port = 8001)
     : mClientState(ClientState::Unconfirmed)
+    , mDiscoverable(GetHostName().Get(), port)
     {}
     
     ~NetworkPeer()
@@ -290,7 +291,7 @@ public:
         // Check that the server is running
         
         if (!IsServerRunning())
-            StartServer();
+            StartServer(mDiscoverable.Port());
         
         // Check that discoverability is on
         
@@ -387,9 +388,9 @@ public:
             str.Set("Disconnected");
     }
     
-    WDL_String GetHostName() const
+    static WDL_String GetHostName()
     {
-        return mDiscoverable.GetHostName();
+        return DiscoverablePeer::GetHostName();
     }
     
     void PeerNames(WDL_String& peersNames)

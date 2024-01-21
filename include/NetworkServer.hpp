@@ -3,6 +3,7 @@
 #define NETWORKSERVER_HPP
 
 #include <memory>
+#include <string>
 
 #include "IPlugLogger.h"
 #include "IPlugStructs.h"
@@ -22,7 +23,12 @@ public:
     NetworkServerInterface(const NetworkServerInterface&) = delete;
     NetworkServerInterface& operator=(const NetworkServerInterface&) = delete;
     
-    void StartServer(const char* port = "8001")
+    void StartServer(uint16_t port)
+    {
+        StartServer(std::to_string(port).c_str());
+    }
+    
+    void StartServer(const char* port)
     {
         VariableLock lock(&mMutex);
         
