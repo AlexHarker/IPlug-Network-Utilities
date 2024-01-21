@@ -264,10 +264,8 @@ public:
         StopServer();
     }
     
-    void Discover(uint32_t interval)
+    void Discover(uint32_t interval, uint32_t maxPeerTime)
     {
-        static constexpr uint32_t maxPeerTime = 8000;
-        
         if (IsClientConnected())
         {
             if (mClientState == ClientState::Confirmed)
