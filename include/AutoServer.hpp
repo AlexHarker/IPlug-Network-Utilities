@@ -5,9 +5,9 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
+#include <list>
 #include <unordered_set>
 #include <utility>
-#include <vector>
 
 #include "DiscoverablePeer.hpp"
 #include "NetworkData.hpp"
@@ -50,14 +50,14 @@ class AutoServer : public NetworkServer, NetworkClient
         uint16_t mPort;
     };
     
-    class PeerList
+    class PeerList : private NetworkTypes
     {
     public:
 
         class Peer
         {
         public:
-            
+                        
             Peer(const char* name, uint16_t port, bool client, uint32_t time = 0)
             : mHost { name, port }
             , mClient(client)
@@ -93,8 +93,12 @@ class AutoServer : public NetworkServer, NetworkClient
             uint32_t mTime;
         };
                 
+        using ListType = std::list<Peer>;
+
         void Add(const Peer& peer)
         {
+            SharedLock lock(&mMutex);
+
             auto findTest = [&](const Peer& a) { return !strcmp(a.Name(), peer.Name()); };
             auto it = std::find_if(mPeers.begin(), mPeers.end(), findTest);
             
@@ -103,9 +107,7 @@ class AutoServer : public NetworkServer, NetworkClient
             if (it == mPeers.end())
             {
                 auto insertTest = [&](const Peer& a) { return NamePrefer(a.Name(), peer.Name()); };
-                auto jt = std::find_if(mPeers.begin(), mPeers.end(), insertTest);
-                
-                mPeers.insert(jt, peer);
+                mPeers.insert(std::find_if(mPeers.begin(), mPeers.end(), insertTest), peer);
             }
             else
                 it->UpdateTime(peer.Time());
@@ -113,6 +115,8 @@ class AutoServer : public NetworkServer, NetworkClient
         
         void Prune(uint32_t maxTime, uint32_t addTime = 0)
         {
+            SharedLock lock(&mMutex);
+
             // Added time to hosts if required
             
             if (addTime)
@@ -123,23 +127,27 @@ class AutoServer : public NetworkServer, NetworkClient
               
             // Remove if max time is exceeded
             
-            auto removeTest = [&](const Peer& a) { return a.Time() >= maxTime; };
-            mPeers.erase(std::remove_if(mPeers.begin(), mPeers.end(), removeTest), mPeers.end());
+            mPeers.remove_if([&](const Peer& a) { return a.Time() >= maxTime; });
         }
         
-        const Peer& operator [](int N) const
+        void Get(ListType& list) const
         {
-            return mPeers[N];
+            SharedLock lock(&mMutex);
+
+            list = mPeers;
         }
         
         int Size() const
         {
+            SharedLock lock(&mMutex);
+
             return static_cast<int>(mPeers.size());
         }
         
     private:
         
-        std::vector<Peer> mPeers;
+        mutable SharedMutex mMutex;
+        ListType mPeers;
     };
     
     class NextServer
@@ -215,9 +223,9 @@ public:
         
         // Update the list of peers
         
-        auto peers = mDiscoverable.FindPeers();
+        auto foundPeers = mDiscoverable.FindPeers();
         
-        for (auto it = peers.begin(); it != peers.end(); it++)
+        for (auto it = foundPeers.begin(); it != foundPeers.end(); it++)
         {
             if (!it->host().empty())
                 mPeers.Add({it->host().c_str(), it->port(), false});
@@ -225,18 +233,19 @@ public:
             
         // Try to connect to any available servers in order of preference
                 
-        for (int i = 0; i < mPeers.Size(); i++)
+        PeerList::ListType peers;
+        mPeers.Get(peers);
+        
+        for (auto it = peers.begin(); it != peers.end(); it++)
         {
-            auto& peer = mPeers[i];
-            
             // Don't attempt to connect to clients or to self connect
             
-            if (peer.IsClient() || IsSelf(peer.Name()))
+            if (it->IsClient() || IsSelf(it->Name()))
                 continue;
             
                 // Connect or resolve
                 
-            if (TryConnect(peer.Name(), peer.Port()))
+            if (TryConnect(it->Name(), it->Port()))
                 break;
             //else
             //    mDiscoverable.Resolve(bonjour_named(peer.Get(), peer.mPort));
@@ -417,15 +426,18 @@ private:
     
     void SendPeerList()
     {
-        if (mPeers.Size())
+        PeerList::ListType peers;
+        mPeers.Get(peers);
+
+        if (peers.size())
         {
-            NetworkByteChunk chunk(mPeers.Size());
+            NetworkByteChunk chunk(peers.size());
             
-            for (int i = 0; i < mPeers.Size(); i++)
+            for (auto it = peers.begin(); it != peers.end(); it++)
             {
-                chunk.Add(mPeers[i].Name());
-                chunk.Add(mPeers[i].Port());
-                chunk.Add(mPeers[i].Time());
+                chunk.Add(it->Name());
+                chunk.Add(it->Port());
+                chunk.Add(it->Time());
             }
             
             SendConnectionDataFromServer("Peers", chunk);
