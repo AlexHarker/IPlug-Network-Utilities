@@ -65,8 +65,9 @@ class PrecisionTimer : public NetworkPeer
     
 public:
     
-    PrecisionTimer()
-    : mLastTimeStamp(0)
+    PrecisionTimer(const char *regname, uint16_t port = 8001)
+    : NetworkPeer(regname, port)
+    , mLastTimeStamp(0)
     {}
     
     void Reset(uintptr_t count = 0)

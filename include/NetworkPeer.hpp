@@ -253,9 +253,9 @@ class NetworkPeer : public NetworkServer, NetworkClient
     
 public:
     
-    NetworkPeer(uint16_t port = 8001)
+    NetworkPeer(const char *regname, uint16_t port = 8001)
     : mClientState(ClientState::Unconfirmed)
-    , mDiscoverable(GetHostName().Get(), port)
+    , mDiscoverable(GetHostName().Get(), regname, port)
     {}
     
     ~NetworkPeer()

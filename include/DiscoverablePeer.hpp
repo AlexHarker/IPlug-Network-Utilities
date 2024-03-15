@@ -3,6 +3,7 @@
 #define DISCOVERABLEPEER_HPP
 
 #include <cstring>
+#include <string>
 
 #include <unistd.h>
 
@@ -14,8 +15,8 @@ class DiscoverablePeer : private bonjour_peer
 {
 public:
     
-    DiscoverablePeer(const char* name, uint16_t port)
-    : bonjour_peer(ConformName(name).c_str(), "_elision._tcp.", "", port)
+    DiscoverablePeer(const char* name, const char* regname, uint16_t port)
+    : bonjour_peer(ConformName(name).c_str(), RegNameConcat(regname).c_str(), "", port)
     {}
     
     static WDL_String GetHostName()
@@ -100,6 +101,11 @@ public:
     }
     
 private:
+    
+    static std::string RegNameConcat(const char* regname)
+    {
+        return std::string("_") + regname + std::string("._tcp.");
+    }
     
     static std::string ConformName(const char* name)
     {
