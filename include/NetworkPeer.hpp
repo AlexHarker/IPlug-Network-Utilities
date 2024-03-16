@@ -9,6 +9,7 @@
 #include <list>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "DiscoverablePeer.hpp"
 #include "NetworkClient.hpp"
@@ -18,13 +19,13 @@
 
 class NetworkPeer : public NetworkServer, NetworkClient
 {
-    enum class ClientState { Unconfirmed, Confirmed, Failed, Connected };
+public:
+    
     enum class PeerSource { Unresolved, Discovered, Client, Server, Remote };
-
-    static bool NamePrefer(const char* name1, const char* name2)
-    {
-        return strcmp(name1, name2) < 0;
-    }
+    
+private:
+    
+    enum class ClientState { Unconfirmed, Confirmed, Failed, Connected };
     
     // A host (a hostname and port)
     
@@ -252,6 +253,23 @@ class NetworkPeer : public NetworkServer, NetworkClient
     };
     
 public:
+            
+    // Peer information structure
+    
+    struct PeerInfo
+    {
+        PeerInfo(const char* name, uint16_t port, PeerSource source, uint32_t time)
+        : mName(name)
+        , mPort(port)
+        , mSource(source)
+        , mTime(time)
+        {}
+        
+        WDL_String mName;
+        uint16_t mPort;
+        PeerSource mSource;
+        uint32_t mTime;
+    };
     
     NetworkPeer(const char *regname, uint16_t port = 8001)
     : mClientState(ClientState::Unconfirmed)
@@ -395,26 +413,17 @@ public:
         return DiscoverablePeer::GetHostName();
     }
     
-    void PeerNames(WDL_String& peerNames) const
+    std::vector<PeerInfo> GetPeerInfo() const
     {
+        std::vector<PeerInfo> info;
+        
         PeerList::ListType peers;
         mPeers.Get(peers);
         
         for (auto it = peers.begin(); it != peers.end(); it++)
-        {
-            peerNames.Append(it->Name());
-            
-            switch (it->Source())
-            {
-                case PeerSource::Unresolved:    peerNames.Append(" [Unresolved]");  break;
-                case PeerSource::Discovered:    peerNames.Append(" [Discovered]");  break;
-                case PeerSource::Client:        peerNames.Append(" [Client]");      break;
-                case PeerSource::Server:        peerNames.Append(" [Server]");      break;
-                default:                        peerNames.Append(" [Remote]");      break;
-            }
-            
-            peerNames.AppendFormatted(256, " %u\n", it->Time());
-        }
+            info.emplace_back(it->Name(), it->Port(), it->Source(), it->Time());
+        
+        return info;
     }
     
     template <class ...Args>
@@ -436,6 +445,11 @@ public:
     }
 
 private:
+    
+    static bool NamePrefer(const char* name1, const char* name2)
+    {
+        return strcmp(name1, name2) < 0;
+    }
     
     bool IsSelf(const char* peerName) const
     {
