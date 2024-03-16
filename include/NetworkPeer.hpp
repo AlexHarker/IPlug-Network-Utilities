@@ -395,25 +395,25 @@ public:
         return DiscoverablePeer::GetHostName();
     }
     
-    void PeerNames(WDL_String& peersNames)
+    void PeerNames(WDL_String& peerNames) const
     {
         PeerList::ListType peers;
         mPeers.Get(peers);
         
         for (auto it = peers.begin(); it != peers.end(); it++)
         {
-            peersNames.Append(it->Name());
+            peerNames.Append(it->Name());
             
             switch (it->Source())
             {
-                case PeerSource::Unresolved:    peersNames.Append(" [Unresolved]");   break;
-                case PeerSource::Discovered:    peersNames.Append(" [Discovered]");   break;
-                case PeerSource::Client:        peersNames.Append(" [Client]");       break;
-                case PeerSource::Server:        peersNames.Append(" [Server]");       break;
-                default:                        peersNames.Append(" [Remote]");       break;
+                case PeerSource::Unresolved:    peerNames.Append(" [Unresolved]");  break;
+                case PeerSource::Discovered:    peerNames.Append(" [Discovered]");  break;
+                case PeerSource::Client:        peerNames.Append(" [Client]");      break;
+                case PeerSource::Server:        peerNames.Append(" [Server]");      break;
+                default:                        peerNames.Append(" [Remote]");      break;
             }
             
-            peersNames.AppendFormatted(256, " %u\n", it->Time());
+            peerNames.AppendFormatted(256, " %u\n", it->Time());
         }
     }
     
