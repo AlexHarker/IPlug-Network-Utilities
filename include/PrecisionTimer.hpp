@@ -139,20 +139,9 @@ public:
         mSamplingRate = sr;
     }
     
-private:
+protected:
     
-    static double CPUTimeStamp()
-    {
-        static auto start = std::chrono::steady_clock::now();
-        return std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
-    }
-    
-    static TimeStamp CalculateOffset(TimeStamp t1, TimeStamp t2, TimeStamp t3, TimeStamp t4)
-    {
-        return Half(t2 - t1 - t4 + t3);
-    }
-     
-    void ReceiveAsServer(ConnectionID id, NetworkByteStream& stream) override
+    bool ProcessAsServer(ConnectionID id, NetworkByteStream& stream)
     {
         if (stream.IsNextTag("Sync"))
         {
@@ -164,10 +153,14 @@ private:
             //DBGMSG("discrepancy %lf ms\n", (t2.AsDouble() - AsTime().AsDouble()) * 1000.0);
 
             SendToClient(id, "Respond", t1, t2);
+            
+            return true;
         }
+        
+        return false;
     }
     
-    void ReceiveAsClient(NetworkByteStream& stream) override
+    bool ProcessAsClient(NetworkByteStream& stream)
     {
         if (stream.IsNextTag("Respond"))
         {
@@ -192,7 +185,34 @@ private:
             
             mOffset = mOffset + alter;
             mReference = -mOffset.AsDouble();
+            
+            return true;
         }
+        
+        return false;
+    }
+    
+private:
+    
+    static double CPUTimeStamp()
+    {
+        static auto start = std::chrono::steady_clock::now();
+        return std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+    }
+    
+    static TimeStamp CalculateOffset(TimeStamp t1, TimeStamp t2, TimeStamp t3, TimeStamp t4)
+    {
+        return Half(t2 - t1 - t4 + t3);
+    }
+     
+    void ReceiveAsServer(ConnectionID id, NetworkByteStream& stream) override
+    {
+        ProcessAsServer(id, stream);
+    }
+    
+    void ReceiveAsClient(NetworkByteStream& stream) override
+    {
+        ProcessAsClient(stream);
     }
     
     double mSamplingRate = 44100;
