@@ -17,7 +17,7 @@
 #include "NetworkServer.hpp"
 #include "NetworkTiming.hpp"
 
-class NetworkPeer : public NetworkServer, NetworkClient
+class NetworkPeer : public NetworkServer, public NetworkClient
 {
 public:
     
