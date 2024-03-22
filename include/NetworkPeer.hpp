@@ -17,12 +17,14 @@
 #include "NetworkServer.hpp"
 #include "NetworkTiming.hpp"
 
-class NetworkPeer : public NetworkServer, public NetworkClient
+class NetworkPeer : private NetworkServer, NetworkClient
 {
 public:
     
     enum class PeerSource { Unresolved, Discovered, Client, Server, Remote };
     
+    using ConnectionID = NetworkTypes::ConnectionID;
+
 private:
     
     enum class ClientState { Unconfirmed, Confirmed, Failed, Connected };
@@ -282,6 +284,17 @@ public:
         StopServer();
     }
     
+    static WDL_String GetHostName()
+    {
+        return DiscoverablePeer::GetHostName();
+    }
+    
+    // Peer status (these do not correspond directly to the state of NstworkServer and NetworkClient
+    
+    bool IsConnectedAsServer() const { return mConfirmedClients.Size(); }
+    bool IsConnectedAsClient() const  { return mClientState == ClientState::Connected; }
+    bool IsDisconnected() const { return !IsConnectedAsServer() && !IsConnectedAsClient(); }
+    
     void Discover(uint32_t interval, uint32_t maxPeerTime)
     {
         if (IsClientConnected())
@@ -389,13 +402,14 @@ public:
         
         if (IsServerConnected())
         {
-            int NConfirmed = mConfirmedClients.Size();
+            const int confirmed = mConfirmedClients.Size();
+            const int clients = NClients();
             str = GetHostName();
             
-            if (NConfirmed != NClients())
-                str.AppendFormatted(256, " [%d][%d]", NConfirmed, NClients());
+            if (confirmed != clients)
+                str.AppendFormatted(256, " [%d/%d]", confirmed, clients);
             else
-                str.AppendFormatted(256, " [%d]", NClients());
+                str.AppendFormatted(256, " [%d]", clients);
 
             if (IsClientConnected())
                 str.AppendFormatted(256, " [%s]", NetworkClient::GetServerName().Get());
@@ -406,11 +420,6 @@ public:
             str.Set("Disconnected");
         
         return str;
-    }
-    
-    static WDL_String GetHostName()
-    {
-        return DiscoverablePeer::GetHostName();
     }
     
     std::vector<PeerInfo> GetPeerInfo() const

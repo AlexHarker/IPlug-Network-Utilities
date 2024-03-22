@@ -115,10 +115,8 @@ public:
     
     void Sync()
     {
-        if (IsServerConnected())
-            return;
-            
-        SendFromClient("Sync", GetTimeStamp());
+        if (IsConnectedAsClient())
+            SendFromClient("Sync", GetTimeStamp());
     }
     
     void Stability()
