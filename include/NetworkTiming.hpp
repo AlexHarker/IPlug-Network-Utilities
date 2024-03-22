@@ -100,6 +100,21 @@ public:
         return a.mTime < b.mTime;
     }
     
+    friend bool operator > (TimeStamp a, TimeStamp b)
+    {
+        return a.mTime > b.mTime;
+    }
+    
+    friend bool operator <= (TimeStamp a, TimeStamp b)
+    {
+        return !(a < b);
+    }
+    
+    friend bool operator >= (TimeStamp a, TimeStamp b)
+    {
+        return !(a > b);
+    }
+    
     friend TimeStamp Half(TimeStamp a)
     {
         return TimeStamp(a.mTime * 0.5);
