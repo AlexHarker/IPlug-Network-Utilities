@@ -292,7 +292,7 @@ public:
     // Peer status (these do not correspond directly to the state of NstworkServer and NetworkClient
     
     bool IsConnectedAsServer() const { return mConfirmedClients.Size(); }
-    bool IsConnectedAsClient() const  { return mClientState == ClientState::Connected; }
+    bool IsConnectedAsClient() const  { return IsClientConnected() && mClientState == ClientState::Connected; }
     bool IsDisconnected() const { return !IsConnectedAsServer() && !IsConnectedAsClient(); }
     
     void Discover(uint32_t interval, uint32_t maxPeerTime)
