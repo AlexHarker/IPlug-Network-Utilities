@@ -19,7 +19,7 @@ public:
     : bonjour_peer(ConformName(name).c_str(), RegNameConcat(regname).c_str(), "", port)
     {}
     
-    static WDL_String GetHostName()
+    static WDL_String GetStaticHostName()
     {
         constexpr int maxLength = 128;
         
@@ -33,6 +33,13 @@ public:
             name.Append(".local");
         
         name.Append(".");
+         
+        return name;
+    }
+    
+    WDL_String GetHostName() const
+    {
+        WDL_String name(resolved_host().c_str());
         
         return name;
     }

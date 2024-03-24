@@ -275,7 +275,7 @@ public:
     
     NetworkPeer(const char *regname, uint16_t port = 8001)
     : mClientState(ClientState::Unconfirmed)
-    , mDiscoverable(GetHostName().Get(), regname, port)
+    , mDiscoverable(DiscoverablePeer::GetStaticHostName().Get(), regname, port)
     {}
     
     ~NetworkPeer()
@@ -284,9 +284,9 @@ public:
         StopServer();
     }
     
-    static WDL_String GetHostName()
+    WDL_String GetHostName() const
     {
-        return DiscoverablePeer::GetHostName();
+        return mDiscoverable.GetHostName();
     }
     
     // Peer status (these do not correspond directly to the state of NstworkServer and NetworkClient
