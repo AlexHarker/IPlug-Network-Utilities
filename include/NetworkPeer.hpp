@@ -684,7 +684,7 @@ private:
         }
         else
         {
-            DBGMSG("Unknown network message to client");
+            DBGMSG("Unknown network message to client\n");
         }
     }
     
@@ -702,7 +702,7 @@ private:
         }
         else
         {
-            DBGMSG("Unknown network message to client");
+            DBGMSG("Unknown network message to client\n");
         }
     }
     
