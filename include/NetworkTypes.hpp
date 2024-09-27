@@ -20,7 +20,7 @@
 #ifndef NETWORKTYPES_HPP
 #define NETWORKTYPES_HPP
 
-#include "../dependencies/websocket-tools/websocket-tools.hpp"
+#include "../dependencies/websocket-tools/include/websocket-tools.hpp"
 
 #include <mutex.h>
 

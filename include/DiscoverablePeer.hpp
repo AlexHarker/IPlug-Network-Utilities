@@ -22,7 +22,7 @@
 
 #include "IPlugLogger.h"
 
-#include "../dependencies/bonjour-for-cpp/bonjour-for-cpp.hpp"
+#include "../dependencies/bonjour-for-cpp/include/bonjour-for-cpp.hpp"
 
 /**
  * @brief Represents a peer that can be discovered over a network using Bonjour.
