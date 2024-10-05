@@ -5,8 +5,10 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstring>
 #include <list>
+#include <thread>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -21,6 +23,66 @@ class NetworkPeer : private NetworkServer, NetworkClient
 {
 public:
     
+    class DiscoveryThread
+    {
+    public:
+        
+        DiscoveryThread(NetworkPeer& peer, double interval = 1500, double maxPeerTime = 30000)
+        : mPeer(peer)
+        , mExiting(false)
+        , mThread([this, interval, maxPeerTime]() { Discovery(interval, maxPeerTime); } )
+        {
+            //if (!mExiting)
+            //Error (also consider making this threadsafe)
+        }
+        
+        void Join()
+        {
+            SetExit();
+            mCondition.notify_one();
+            mThread.join();
+        }
+        
+    private:
+        
+        void Discovery(double interval, double maxPeerTime)
+        {
+            bool run = true;
+
+            IntervalPoll DiscoveryInterval(interval);
+            
+            while (run)
+            {
+                if (DiscoveryInterval())
+                    mPeer.Discover(interval, maxPeerTime);
+                
+                auto sleepFor = DiscoveryInterval.Until();
+                            
+                if (sleepFor)
+                    run = WaitFor(std::chrono::duration<double, std::milli>(sleepFor));
+            }
+        }
+
+        void SetExit()
+        {
+            std::lock_guard<std::mutex> lock(mMutex);
+            mExiting = true;
+        }
+        
+        template<class Duration>
+        bool WaitFor(Duration duration)
+        {
+            std::unique_lock<std::mutex> lock(mMutex);
+            return mCondition.wait_for(lock, duration, [this]() { return !mExiting; });
+        }
+
+        NetworkPeer& mPeer;
+        bool mExiting;
+        std::condition_variable mCondition;
+        std::mutex mMutex;
+        std::thread mThread;
+    };
+
     enum class PeerSource { Unresolved, Discovered, Client, Server, Remote };
     
     using ConnectionID = NetworkTypes::ConnectionID;
