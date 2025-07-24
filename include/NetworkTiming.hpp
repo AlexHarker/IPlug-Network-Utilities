@@ -107,12 +107,12 @@ public:
     
     friend bool operator <= (TimeStamp a, TimeStamp b)
     {
-        return !(a < b);
+        return !(a > b);
     }
     
     friend bool operator >= (TimeStamp a, TimeStamp b)
     {
-        return !(a > b);
+        return !(a < b);
     }
     
     friend bool operator == (TimeStamp a, TimeStamp b)
