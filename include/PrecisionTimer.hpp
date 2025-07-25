@@ -85,7 +85,7 @@ public:
         
         mCount += count;
         
-        if (AsTime().AsDouble() <= mLastTimeStamp.AsDouble())
+        if (AsTime() <= mLastTimeStamp)
             mMonotonicCount = 0;
         else
             mMonotonicCount += count;
